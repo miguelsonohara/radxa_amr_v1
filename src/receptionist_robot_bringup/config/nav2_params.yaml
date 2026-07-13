@@ -1,0 +1,545 @@
+# ==============================================================================
+# NAV2 PARAMETERS FOR RECEPTIONIST ROBOT (ROS 2 JAZZY)
+# ==============================================================================
+# This configuration file controls the behavior of the entire Nav2 stack.
+# All parameters are annotated with explanations and tuning guidelines.
+# ==============================================================================
+
+bt_navigator:
+  ros__parameters:
+    # --------------------------------------------------------------------------
+    # BT Navigator: Orchestrates navigation using Behavior Trees (BT).
+    # --------------------------------------------------------------------------
+
+    # Global coordinate frame (typically 'map' for global navigation).
+    global_frame: map
+
+    # Robot's main coordinate frame. Set to 'base_link' to match ESP32 TF structure.
+    robot_base_frame: base_link
+
+    # Topic from which to read odometry. ESP32 publishes on '/odom'.
+    odom_topic: /odom
+
+    # Tick rate of the behavior tree (Hz).
+    # Tuning: 10Hz is standard. Increase (e.g. 20Hz) for faster response times;
+    # decrease (e.g. 5Hz) to save CPU on low-resource boards.
+    bt_loop_duration: 10
+
+    # Timeout (seconds) when waiting for action servers (e.g., planner, controller) to respond.
+    default_server_timeout: 20
+
+    # Navigation plugins loaded by the BT.
+    navigators: ["navigate_to_pose", "navigate_through_poses"]
+
+    navigate_to_pose:
+      plugin: "nav2_bt_navigator::NavigateToPoseNavigator"
+
+    navigate_through_poses:
+      plugin: "nav2_bt_navigator::NavigateThroughPosesNavigator"
+
+    # Action server timeout in seconds for receiving planning/control results.
+    action_server_result_timeout: 900.0
+
+    # Error code mapping for diagnosing navigation failures.
+    error_code_names:
+      - compute_path_error_code
+      - follow_path_error_code
+
+controller_server:
+  ros__parameters:
+    enable_stamped_cmd_vel: true
+    # --------------------------------------------------------------------------
+    # Controller Server: Executes local path-following velocities.
+    # --------------------------------------------------------------------------
+
+    # Running frequency of the controller (Hz).
+    # Tuning: 20Hz provides smooth velocity updates. Lower (e.g. 10Hz) to save CPU.
+    controller_frequency: 20.0
+
+    # Timeout (seconds) allowed for costmap updates. If local costmap is stale
+    # longer than this, the controller stops the robot.
+    costmap_update_timeout: 0.30
+
+    # Thresholds below which velocities are treated as zero.
+    min_x_velocity_threshold: 0.05
+    min_y_velocity_threshold: 0.5 # High because it's a non-holonomic (differential) robot
+    min_theta_velocity_threshold: 0.001
+
+    # Time (seconds) the controller is allowed to fail (e.g. loop overrun) before triggering recoveries.
+    failure_tolerance: 0.3
+
+    # List of plugins for checking progress and goals.
+    progress_checker_plugins: ["progress_checker"]
+    goal_checker_plugins: ["general_goal_checker"]
+    controller_plugins: ["FollowPath"]
+
+    # Enables real-time thread priority (set false if not using a RT kernel).
+    use_realtime_priority: false
+
+    # Progress Checker: Verifies the robot is actively moving toward the goal.
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      # Robot must move at least this distance (meters) within the allowance time.
+      # Tuning: Increase if the robot gets stuck in tight places without triggering recovery.
+      required_movement_radius: 0.5
+      # Time allowance (seconds) to achieve the required movement radius.
+      movement_time_allowance: 10.0
+
+    # Goal Checker: Checks if the robot has reached the target pose.
+    general_goal_checker:
+      stateful: True
+      plugin: "nav2_controller::SimpleGoalChecker"
+      # Goal tolerance in meters.
+      # Tuning: 0.20m-0.25m is standard. Decrease for precise positioning, but the robot
+      # might overshoot and oscillate if the tolerance is too tight for the controller.
+      xy_goal_tolerance: 0.20
+      # Goal tolerance in heading (radians).
+      # Tuning: 0.20 rad (~11 degrees). Decrease to force precise heading alignment.
+      yaw_goal_tolerance: 0.20
+
+    # FollowPath (Regulated Pure Pursuit Controller):
+    # Excellent, computationally light local planner for differential drive robots.
+    FollowPath:
+      plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
+      max_vel_x: 0.4
+      # Minimum linear velocity (m/s) (negative value allows reversing if enabled).
+      min_vel_x: 0.05 #old value 0.0
+      # Maximum angular velocity (rad/s).
+      # Tuning: 1.5 rad/s (~85 deg/s) allows rapid turning in place.
+      max_vel_theta: 0.65
+      # Maximum linear acceleration (m/s^2).
+      max_accel_x: 5.0
+      # Maximum angular acceleration (rad/s^2).
+      max_accel_theta: 5.0
+      # Lookahead distance (meters) used to compute pure pursuit steering.
+      # Tuning: Larger values smooth path following but cut corners. Smaller values track
+      # the global path tightly but can cause oscillations. Typical value: 0.4m - 1.0m.
+      lookahead_dist: 0.8
+      # Scale factor to increase lookahead distance proportionally with speed (seconds).
+      # lookahead_dist = lookahead_dist + (speed * lookahead_time)
+      lookahead_time: 1.5
+      # Minimum lookahead distance (meters) to prevent steering instability at slow speeds.
+      min_lookahead_dist: 0.3
+      # Scale factor to reduce speed when turning.
+      # Tuning: Lower values slow down the robot more aggressively on sharp turns.
+      regulated_linear_scaling_parameter: 0.05
+      # If true, slows down when approaching obstacles.
+      use_regulated_linear_velocity_scaling: true
+      # Scale factor to slow down when near obstacles.
+      cost_scaling_dist: 0.6
+      # Minimum speed (m/s) during regulated scaling to prevent the robot from stopping entirely.
+      min_approach_linear_velocity: 0.2 # old_value = 0.0
+      # If true, enables rotating in place to align with path heading if angular error is high.
+      use_rotate_to_heading: true
+      # Angular error threshold (radians) to trigger rotation in place before moving.
+      # Tuning: 0.5 rad (~28 degrees). If path error exceeds this, the robot turns first.
+      rotate_to_heading_angular_coarse_max_dist: 1.6
+      # Threshold below which the robot stops turning in place and begins driving (radians).
+      rotate_to_heading_min_angle: 0.2
+      max_angular_accel: 5.0
+      # Specific angular velocity (rad/s) used during in-place rotation to heading.
+      rotate_to_heading_angular_vel: 1.6
+      # Allows the controller to use the obstacle costmap to slow down.
+      use_costmap_prevent_runaway: true
+      # Time projection (seconds) to check for collisions ahead.
+      max_allowed_time_to_collision_up_to_carrot: 1.0
+      # If true, visualizes the lookahead point (carrot) in RViz.
+      transform_tolerance: 0.1
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      # --------------------------------------------------------------------------
+      # Local Costmap: Represents immediate obstacle space for local collision avoidance.
+      # --------------------------------------------------------------------------
+
+      # Frequency (Hz) at which the costmap is updated with new sensor data.
+      update_frequency: 5.0
+      # Frequency (Hz) at which the costmap is published to RViz.
+      publish_frequency: 2.0
+
+      # Frame of reference for local navigation.
+      # Set to 'odom' so that transient errors in global localization (SLAM) do not
+      # distort the local obstacle avoidance coordinates.
+      global_frame: odom
+
+      # Robot base frame.
+      robot_base_frame: base_link
+
+      # If true, the local costmap window moves with the robot (rolling window).
+      rolling_window: true
+      # Dimensions of the local costmap window in meters (3.0m x 3.0m).
+      width: 5
+      height: 5
+      # Costmap cell resolution in meters per cell (0.05m = 5cm).
+      resolution: 0.05
+
+      # Circular footprint radius of the robot in meters.
+      # Wheelbase is 0.30m, and chassis radius is 0.18m. With wheel width, physical width
+      # is ~0.35m. A radius of 0.20m (diameter 0.40m) provides a safe bounding circle.
+      # Tuning: Increase to give a wider safety buffer around obstacles; decrease to allow
+      # the robot to squeeze through narrow passages.
+      robot_radius: 0.20
+
+      # Layers loaded into the local costmap.
+      plugins: ["obstacle_layer", "inflation_layer"]
+
+      # Inflation Layer: Enlarges obstacles to represent safety margins.
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        # Cost scaling factor. Higher values make the cost decay more rapidly away from obstacles.
+        cost_scaling_factor: 3.0
+        # Radius in meters around obstacles where cost is non-zero.
+        # Tuning: 0.50m. Adjust this to change the safety distance kept from walls.
+        inflation_radius: 0.1
+
+      # Obstacle Layer: Marks obstacles detected by the LiDAR.
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: True
+        observation_sources: scan
+        scan:
+          topic: /scan
+          # Ignore points above this height (meters) to avoid ceiling artifacts.
+          max_obstacle_height: 2.0
+          # If true, raytraces through free space to clear out outdated obstacles.
+          clearing: True
+          # If true, marks detected scan points as obstacles.
+          marking: True
+          data_type: "LaserScan"
+          # Maximum range (meters) to clear obstacles using scan raytracing.
+          raytrace_max_range: 3.0
+          # Minimum range to clear obstacles.
+          raytrace_min_range: 0.0
+          # Maximum range (meters) at which to mark obstacles in the costmap.
+          # Tuning: Keep slightly lower than the sensor's physical range to avoid mapping noise.
+          obstacle_max_range: 2.5
+          obstacle_min_range: 0.05
+
+      # Force publishing full costmap updates instead of bounding box updates (useful for RViz).
+      always_send_full_costmap: True
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      # --------------------------------------------------------------------------
+      # Global Costmap: Represents the entire mapped area for global path planning.
+      # --------------------------------------------------------------------------
+
+      # Frequency (Hz) at which the global costmap updates its sensor layers.
+      update_frequency: 1.0
+      # Frequency (Hz) at which the global costmap is published to RViz.
+      publish_frequency: 1.0
+
+      # Frame of reference for global planning (always 'map').
+      global_frame: map
+      # Robot base frame.
+      robot_base_frame: base_link
+      # Bounding circle radius (meters). Must match the local costmap.
+      robot_radius: 0.20
+      resolution: 0.05
+
+      # If true, allows the planner to plan through unmapped space.
+      track_unknown_space: true
+
+      # Layers loaded into the global costmap.
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+
+      # Static Layer: Imports the map generated by SLAM Toolbox.
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        # Transient Local durability ensures the map server maps are synchronized correctly.
+        map_subscribe_transient_local: True
+
+      # Obstacle Layer: Marks dynamic obstacles in the global map.
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: True
+        observation_sources: scan
+        scan:
+          topic: /scan
+          max_obstacle_height: 2.0
+          clearing: True
+          marking: True
+          data_type: "LaserScan"
+          raytrace_max_range: 3.0
+          raytrace_min_range: 0.0
+          obstacle_max_range: 2.5
+          obstacle_min_range: 0.05
+
+      # Inflation Layer: Adds safety buffer around obstacles in the global costmap.
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        # Tuning: Typically larger than the local costmap inflation (e.g. 0.70m) to bias
+        # global plans away from walls and center them in corridors.
+        inflation_radius: 0.1
+
+      always_send_full_costmap: True
+
+planner_server:
+  ros__parameters:
+    # --------------------------------------------------------------------------
+    # Planner Server: Computes global paths from start to goal.
+    # --------------------------------------------------------------------------
+
+    # Frequency (Hz) at which global plans are updated if target moves.
+    expected_planner_frequency: 20.0
+    planner_plugins: ["GridBased"]
+    costmap_update_timeout: 1.0
+
+    # GridBased (NavFn Planner): Computes A* or Dijkstra paths on the grid.
+    GridBased:
+      plugin: "nav2_navfn_planner::NavfnPlanner"
+      # Tolerance (meters) around the goal pose. If the exact goal is occupied,
+      # the planner finds the closest free cell within this radius.
+      tolerance: 0.5
+      # If true, uses A* algorithm (faster). If false, uses Dijkstra (finds truer shortest path).
+      use_astar: false
+      # Allow planning through unmapped space.
+      allow_unknown: true
+
+smoother_server:
+  ros__parameters:
+    # --------------------------------------------------------------------------
+    # Smoother Server: Post-processes the global path to smooth out sharp turns.
+    # --------------------------------------------------------------------------
+    smoother_plugins: ["simple_smoother"]
+
+    simple_smoother:
+      plugin: "nav2_smoother::SimpleSmoother"
+      # Convergence tolerance.
+      tolerance: 1.0e-10
+      # Maximum solver iterations.
+      max_its: 1000
+      # Refine path after initial smoothing.
+      do_refinement: True
+
+behavior_server:
+  ros__parameters:
+    enable_stamped_cmd_vel: true
+    # --------------------------------------------------------------------------
+    # Behavior Server: Handles recovery behaviors when the robot gets stuck.
+    # --------------------------------------------------------------------------
+    local_costmap_topic: local_costmap/costmap_raw
+    global_costmap_topic: global_costmap/costmap_raw
+    local_footprint_topic: local_costmap/published_footprint
+    global_footprint_topic: global_costmap/published_footprint
+    cycle_frequency: 10.0
+
+    # Active recovery behaviors.
+    behavior_plugins: ["spin", "backup", "wait"]
+
+    spin:
+      plugin: "nav2_behaviors::Spin"
+    backup:
+      plugin: "nav2_behaviors::BackUp"
+    wait:
+      plugin: "nav2_behaviors::Wait"
+
+    local_frame: odom
+    global_frame: map
+    robot_base_frame: base_link
+    transform_tolerance: 0.1
+    simulate_ahead_time: 2.0
+
+    # Speed limits during recovery maneuvers.
+    # Tuning: Keep recovery motions slow and controlled (e.g. 0.8 rad/s spin).
+    max_rotational_vel: 0.7
+    min_rotational_vel: 0.6
+    rotational_acc_lim: 1.0
+
+waypoint_follower:
+  ros__parameters:
+    # --------------------------------------------------------------------------
+    # Waypoint Follower: Coordinates multi-goal navigation.
+    # --------------------------------------------------------------------------
+    loop_rate: 20
+    stop_on_failure: false
+    action_server_result_timeout: 900.0
+    waypoint_task_executor_plugin: "wait_at_waypoint"
+    wait_at_waypoint:
+      plugin: "nav2_waypoint_follower::WaitAtWaypoint"
+      enabled: True
+      # Time in milliseconds to pause at each waypoint (200ms).
+      waypoint_pause_duration: 200
+
+velocity_smoother:
+  ros__parameters:
+    enable_stamped_cmd_vel: true
+    # --------------------------------------------------------------------------
+    # Velocity Smoother: Smooths output cmd_vel before sending it to the motors.
+    # --------------------------------------------------------------------------
+
+    # Frequency (Hz) at which smoothed velocity is published.
+    smoothing_frequency: 20.0
+
+    # Flag to stamp velocity outputs (keep False for standard geometry_msgs/Twist).
+    stamp_smoothed_velocity_with_smoothing_time: False
+
+    # Scale linear/angular velocities together to maintain steering geometry.
+    scale_velocities: False
+
+    # Feedback loop setting. OPEN_LOOP does not require odometry feedback (lower latency).
+    feedback: "OPEN_LOOP"
+
+    # Speed Limits [X, Y, Theta].
+    # Tuning: Adjust X to match max motor speed (e.g. 0.5m/s). Y is 0.0 (non-holonomic).
+    # Theta limits rotational speed.
+    max_velocity: [0.25, 0.0, 0.7]
+    min_velocity: [-0.25, 0.0, -0.7]
+
+    # Acceleration and Deceleration limits.
+    # Tuning: Lower values smooth out sudden jerks, saving motor gears and preventing wheel slippage.
+    max_accel: [1.0, 0.0, 4.0]
+    max_decel: [-1.0, 0.0, -4.0]
+
+    odom_topic: "odom"
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    # Timeout (seconds). If navigation crashes, smoother stops publishing.
+    velocity_timeout: 1.0
+
+collision_monitor:
+  ros__parameters:
+    enable_stamped_cmd_vel: true
+    # --------------------------------------------------------------------------
+    # Collision Monitor: Safety node that intercepts velocity commands.
+    # --------------------------------------------------------------------------
+    base_frame_id: base_link
+    odom_frame_id: odom
+
+    # Subscribed topic (output of Nav2 controller / velocity smoother).
+    cmd_vel_in_topic: cmd_vel_smoothed
+    # Published topic (direct command to ESP32 low-level controller).
+    cmd_vel_out_topic: cmd_vel
+
+    state_topic: collision_monitor_state
+    transform_tolerance: 0.2
+    source_timeout: 1.0
+    base_shift_correction: True
+    stop_pub_timeout: 2.0
+
+    # Active collision shapes/polygons.
+    polygons: ["FootprintApproach"]
+
+    # FootprintApproach: Monitors obstacles inside the projected path of the robot.
+    FootprintApproach:
+      type: "polygon"
+      action_type: "approach"
+      footprint_topic: "/local_costmap/published_footprint"
+      # Time (seconds) before collision to trigger emergency stop.
+      # Tuning: Increase to stop earlier at higher speeds; decrease to allow closer maneuvers.
+      time_before_collision: 1.0
+      simulation_time_step: 0.1
+      min_points: 3
+      visualize: False
+      enabled: True
+
+    # Laser scan configuration used by the collision monitor.
+    observation_sources: ["scan"]
+    scan:
+      type: "scan"
+      topic: "scan"
+      # Minimum height (meters) of lidar scan points to consider (ignores floor reflections).
+      min_height: 0.05
+      max_height: 2.0
+      enabled: True
+
+route_server:
+  ros__parameters:
+    # --------------------------------------------------------------------------
+    # Route Server: Performs topological graph routing for multi-room navigation.
+    # --------------------------------------------------------------------------
+
+    # Radius (meters) to achieve a routing graph node.
+    boundary_radius_to_achieve_node: 1.0
+    radius_to_achieve_node: 2.0
+
+    # Smooth corner transitions in topological routing.
+    smooth_corners: true
+
+    # Operations loaded by the route server.
+    operations: ["AdjustSpeedLimit", "ReroutingService", "CollisionMonitor"]
+
+    ReroutingService:
+      plugin: "nav2_route::ReroutingService"
+
+    AdjustSpeedLimit:
+      plugin: "nav2_route::AdjustSpeedLimit"
+
+    CollisionMonitor:
+      plugin: "nav2_route::CollisionMonitor"
+      # Max distance (meters) to monitor collisions on route edges.
+      max_collision_dist: 3.0
+
+    # Edge cost function plugins to evaluate edge costs.
+    edge_cost_functions: ["DistanceScorer", "CostmapScorer"]
+
+    DistanceScorer:
+      plugin: "nav2_route::DistanceScorer"
+
+    CostmapScorer:
+      plugin: "nav2_route::CostmapScorer"
+
+docking_server:
+  ros__parameters:
+    enable_stamped_cmd_vel: true
+    # --------------------------------------------------------------------------
+    # Docking Server: Handles autonomous docking maneuvers (e.g. charging station).
+    # --------------------------------------------------------------------------
+
+    # Frequency of the docking control loop (Hz).
+    controller_frequency: 50.0
+
+    # Timeout settings for docking search, approach, and charging.
+    initial_perception_timeout: 5.0
+    wait_charge_timeout: 5.0
+    dock_approach_timeout: 30.0
+
+    # Docking precision tolerances.
+    undock_linear_tolerance: 0.05
+    undock_angular_tolerance: 0.1
+    max_retries: 3
+
+    # Reference frames.
+    base_frame: "base_link"
+    fixed_frame: "odom"
+
+    # If true, the robot backs into the dock instead of driving forward.
+    dock_backwards: false
+    dock_prestaging_tolerance: 0.5
+
+    # Docking plugins. Standard charging dock plugin is simple_charging_dock.
+    dock_plugins: ["simple_charging_dock"]
+
+    simple_charging_dock:
+      plugin: "opennav_docking::SimpleChargingDock"
+      docking_threshold: 0.05
+      # Offset in X (meters) to position the robot for docking approach.
+      staging_x_offset: -0.7
+      # If true, listens to external Pose publisher/topic for dock location.
+      use_external_detection_pose: true
+      use_battery_status: false
+      use_stall_detection: false
+      external_detection_timeout: 1.0
+      external_detection_translation_x: -0.18
+      external_detection_translation_y: 0.0
+      external_detection_rotation_roll: -1.57
+      external_detection_rotation_pitch: -1.57
+      external_detection_rotation_yaw: 0.0
+      filter_coef: 0.1
+
+    # Docking controller parameters.
+    controller:
+      k_phi: 3.0
+      k_delta: 2.0
+      v_linear_min: 0.15
+      v_linear_max: 0.15
+      use_collision_detection: true
+      costmap_topic: "local_costmap/costmap_raw"
+      footprint_topic: "local_costmap/published_footprint"
+      transform_tolerance: 0.1
+      projection_time: 5.0
+      simulation_step: 0.1
+      dock_collision_threshold: 0.3

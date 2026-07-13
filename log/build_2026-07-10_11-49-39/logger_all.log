@@ -1,0 +1,340 @@
+[0.157s] DEBUG:colcon:Command line arguments: ['/usr/bin/colcon', 'build', '--symlink-install']
+[0.157s] DEBUG:colcon:Parsed command line arguments: Namespace(log_base=None, log_level=None, verb_name='build', build_base='build', install_base='install', merge_install=False, symlink_install=True, test_result_base=None, continue_on_error=False, executor='parallel', parallel_workers=8, event_handlers=None, ignore_user_meta=False, metas=['./colcon.meta'], base_paths=['.'], packages_ignore=None, packages_ignore_regex=None, paths=None, packages_up_to=None, packages_up_to_regex=None, packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_select_by_dep=None, packages_skip_by_dep=None, packages_skip_up_to=None, packages_select_build_failed=False, packages_skip_build_finished=False, packages_select_test_failures=False, packages_skip_test_passed=False, packages_select=None, packages_skip=None, packages_select_regex=None, packages_skip_regex=None, packages_start=None, packages_end=None, allow_overriding=[], cmake_args=None, cmake_target=None, cmake_target_skip_unavailable=False, cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, ament_cmake_args=None, catkin_cmake_args=None, catkin_skip_building_tests=False, mixin_files=None, mixin=None, verb_parser=<colcon_mixin.mixin.mixin_argument.MixinArgumentDecorator object at 0xffff8be1c3b0>, verb_extension=<colcon_core.verb.build.BuildVerb object at 0xffff8be1c050>, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0xffff8be1c050>>, mixin_verb=('build',))
+[0.209s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[0.210s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[0.210s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[0.210s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[0.210s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) discover
+[0.210s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[0.210s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/home/radxa/receptionist_robot_ws'
+[0.210s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ignore', 'ignore_ament_install']
+[0.210s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore'
+[0.211s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore_ament_install'
+[0.211s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_pkg']
+[0.211s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_pkg'
+[0.211s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_meta']
+[0.211s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_meta'
+[0.211s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ros']
+[0.211s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ros'
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['cmake', 'python']
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'cmake'
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python'
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['python_setup_py']
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python_setup_py'
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(EDS_Bot) by extensions ['ignore', 'ignore_ament_install']
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(EDS_Bot) by extension 'ignore'
+[0.246s] Level 1:colcon.colcon_core.package_identification:_identify(EDS_Bot) by extension 'ignore_ament_install'
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(EDS_Bot) by extensions ['colcon_pkg']
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(EDS_Bot) by extension 'colcon_pkg'
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(EDS_Bot) by extensions ['colcon_meta']
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(EDS_Bot) by extension 'colcon_meta'
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(EDS_Bot) by extensions ['ros']
+[0.247s] Level 1:colcon.colcon_core.package_identification:_identify(EDS_Bot) by extension 'ros'
+[0.250s] DEBUG:colcon.colcon_core.package_identification:Package 'EDS_Bot' with type 'ros.ament_cmake' and name 'eds_bot'
+[0.250s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extensions ['ignore', 'ignore_ament_install']
+[0.250s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extension 'ignore'
+[0.250s] Level 1:colcon.colcon_core.package_identification:_identify(build) ignored
+[0.251s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extensions ['ignore', 'ignore_ament_install']
+[0.251s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extension 'ignore'
+[0.251s] Level 1:colcon.colcon_core.package_identification:_identify(install) ignored
+[0.251s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extensions ['ignore', 'ignore_ament_install']
+[0.251s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extension 'ignore'
+[0.251s] Level 1:colcon.colcon_core.package_identification:_identify(log) ignored
+[0.251s] Level 1:colcon.colcon_core.package_identification:_identify(map) by extensions ['ignore', 'ignore_ament_install']
+[0.251s] Level 1:colcon.colcon_core.package_identification:_identify(map) by extension 'ignore'
+[0.251s] Level 1:colcon.colcon_core.package_identification:_identify(map) by extension 'ignore_ament_install'
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(map) by extensions ['colcon_pkg']
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(map) by extension 'colcon_pkg'
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(map) by extensions ['colcon_meta']
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(map) by extension 'colcon_meta'
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(map) by extensions ['ros']
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(map) by extension 'ros'
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(map) by extensions ['cmake', 'python']
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(map) by extension 'cmake'
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(map) by extension 'python'
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(map) by extensions ['python_setup_py']
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(map) by extension 'python_setup_py'
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ignore', 'ignore_ament_install']
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore'
+[0.252s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore_ament_install'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_pkg']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_pkg'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_meta']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_meta'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ros']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ros'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['cmake', 'python']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'cmake'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['python_setup_py']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python_setup_py'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_bringup) by extensions ['ignore', 'ignore_ament_install']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_bringup) by extension 'ignore'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_bringup) by extension 'ignore_ament_install'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_bringup) by extensions ['colcon_pkg']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_bringup) by extension 'colcon_pkg'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_bringup) by extensions ['colcon_meta']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_bringup) by extension 'colcon_meta'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_bringup) by extensions ['ros']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_bringup) by extension 'ros'
+[0.254s] DEBUG:colcon.colcon_core.package_identification:Package 'src/receptionist_robot_bringup' with type 'ros.ament_cmake' and name 'receptionist_robot_bringup'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_description) by extensions ['ignore', 'ignore_ament_install']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_description) by extension 'ignore'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_description) by extension 'ignore_ament_install'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_description) by extensions ['colcon_pkg']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_description) by extension 'colcon_pkg'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_description) by extensions ['colcon_meta']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_description) by extension 'colcon_meta'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_description) by extensions ['ros']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/receptionist_robot_description) by extension 'ros'
+[0.256s] DEBUG:colcon.colcon_core.package_identification:Package 'src/receptionist_robot_description' with type 'ros.ament_cmake' and name 'receptionist_robot_description'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(src/sllidar_ros2) by extensions ['ignore', 'ignore_ament_install']
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(src/sllidar_ros2) by extension 'ignore'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(src/sllidar_ros2) by extension 'ignore_ament_install'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(src/sllidar_ros2) by extensions ['colcon_pkg']
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(src/sllidar_ros2) by extension 'colcon_pkg'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(src/sllidar_ros2) by extensions ['colcon_meta']
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(src/sllidar_ros2) by extension 'colcon_meta'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(src/sllidar_ros2) by extensions ['ros']
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(src/sllidar_ros2) by extension 'ros'
+[0.257s] DEBUG:colcon.colcon_core.package_identification:Package 'src/sllidar_ros2' with type 'ros.ament_cmake' and name 'sllidar_ros2'
+[0.257s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults
+[0.257s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) discover
+[0.257s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) using defaults
+[0.257s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) discover
+[0.257s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) using defaults
+[0.280s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) check parameters
+[0.280s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) discover
+[0.284s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 4 installed packages in /home/radxa/receptionist_robot_ws/install
+[0.285s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 14 installed packages in /home/radxa/turtlebot3_ws/install
+[0.286s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 2 installed packages in /home/radxa/microros_ws/install
+[0.288s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 386 installed packages in /opt/ros/jazzy
+[0.290s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) using defaults
+[0.359s] Level 5:colcon.colcon_core.verb:set package 'eds_bot' build argument 'cmake_args' from command line to 'None'
+[0.359s] Level 5:colcon.colcon_core.verb:set package 'eds_bot' build argument 'cmake_target' from command line to 'None'
+[0.359s] Level 5:colcon.colcon_core.verb:set package 'eds_bot' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.359s] Level 5:colcon.colcon_core.verb:set package 'eds_bot' build argument 'cmake_clean_cache' from command line to 'False'
+[0.360s] Level 5:colcon.colcon_core.verb:set package 'eds_bot' build argument 'cmake_clean_first' from command line to 'False'
+[0.360s] Level 5:colcon.colcon_core.verb:set package 'eds_bot' build argument 'cmake_force_configure' from command line to 'False'
+[0.360s] Level 5:colcon.colcon_core.verb:set package 'eds_bot' build argument 'ament_cmake_args' from command line to 'None'
+[0.360s] Level 5:colcon.colcon_core.verb:set package 'eds_bot' build argument 'catkin_cmake_args' from command line to 'None'
+[0.360s] Level 5:colcon.colcon_core.verb:set package 'eds_bot' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.360s] DEBUG:colcon.colcon_core.verb:Building package 'eds_bot' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/radxa/receptionist_robot_ws/build/eds_bot', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/radxa/receptionist_robot_ws/install/eds_bot', 'merge_install': False, 'path': '/home/radxa/receptionist_robot_ws/EDS_Bot', 'symlink_install': True, 'test_result_base': None}
+[0.360s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_description' build argument 'cmake_args' from command line to 'None'
+[0.360s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_description' build argument 'cmake_target' from command line to 'None'
+[0.360s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_description' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.360s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_description' build argument 'cmake_clean_cache' from command line to 'False'
+[0.360s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_description' build argument 'cmake_clean_first' from command line to 'False'
+[0.360s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_description' build argument 'cmake_force_configure' from command line to 'False'
+[0.360s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_description' build argument 'ament_cmake_args' from command line to 'None'
+[0.360s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_description' build argument 'catkin_cmake_args' from command line to 'None'
+[0.360s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_description' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.360s] DEBUG:colcon.colcon_core.verb:Building package 'receptionist_robot_description' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/radxa/receptionist_robot_ws/build/receptionist_robot_description', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description', 'merge_install': False, 'path': '/home/radxa/receptionist_robot_ws/src/receptionist_robot_description', 'symlink_install': True, 'test_result_base': None}
+[0.361s] Level 5:colcon.colcon_core.verb:set package 'sllidar_ros2' build argument 'cmake_args' from command line to 'None'
+[0.361s] Level 5:colcon.colcon_core.verb:set package 'sllidar_ros2' build argument 'cmake_target' from command line to 'None'
+[0.361s] Level 5:colcon.colcon_core.verb:set package 'sllidar_ros2' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.361s] Level 5:colcon.colcon_core.verb:set package 'sllidar_ros2' build argument 'cmake_clean_cache' from command line to 'False'
+[0.361s] Level 5:colcon.colcon_core.verb:set package 'sllidar_ros2' build argument 'cmake_clean_first' from command line to 'False'
+[0.361s] Level 5:colcon.colcon_core.verb:set package 'sllidar_ros2' build argument 'cmake_force_configure' from command line to 'False'
+[0.361s] Level 5:colcon.colcon_core.verb:set package 'sllidar_ros2' build argument 'ament_cmake_args' from command line to 'None'
+[0.361s] Level 5:colcon.colcon_core.verb:set package 'sllidar_ros2' build argument 'catkin_cmake_args' from command line to 'None'
+[0.361s] Level 5:colcon.colcon_core.verb:set package 'sllidar_ros2' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.361s] DEBUG:colcon.colcon_core.verb:Building package 'sllidar_ros2' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/radxa/receptionist_robot_ws/build/sllidar_ros2', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/radxa/receptionist_robot_ws/install/sllidar_ros2', 'merge_install': False, 'path': '/home/radxa/receptionist_robot_ws/src/sllidar_ros2', 'symlink_install': True, 'test_result_base': None}
+[0.361s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_bringup' build argument 'cmake_args' from command line to 'None'
+[0.361s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_bringup' build argument 'cmake_target' from command line to 'None'
+[0.361s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_bringup' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.361s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_bringup' build argument 'cmake_clean_cache' from command line to 'False'
+[0.361s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_bringup' build argument 'cmake_clean_first' from command line to 'False'
+[0.361s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_bringup' build argument 'cmake_force_configure' from command line to 'False'
+[0.361s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_bringup' build argument 'ament_cmake_args' from command line to 'None'
+[0.362s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_bringup' build argument 'catkin_cmake_args' from command line to 'None'
+[0.362s] Level 5:colcon.colcon_core.verb:set package 'receptionist_robot_bringup' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.362s] DEBUG:colcon.colcon_core.verb:Building package 'receptionist_robot_bringup' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/radxa/receptionist_robot_ws/build/receptionist_robot_bringup', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup', 'merge_install': False, 'path': '/home/radxa/receptionist_robot_ws/src/receptionist_robot_bringup', 'symlink_install': True, 'test_result_base': None}
+[0.362s] INFO:colcon.colcon_core.executor:Executing jobs using 'parallel' executor
+[0.363s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete
+[0.364s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/radxa/receptionist_robot_ws/src/receptionist_robot_description' with build type 'ament_cmake'
+[0.365s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/radxa/receptionist_robot_ws/src/receptionist_robot_description'
+[0.367s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[0.367s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.367s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.375s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/radxa/receptionist_robot_ws/src/sllidar_ros2' with build type 'ament_cmake'
+[0.375s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/radxa/receptionist_robot_ws/src/sllidar_ros2'
+[0.376s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.376s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.383s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/radxa/receptionist_robot_ws/EDS_Bot' with build type 'ament_cmake'
+[0.383s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/radxa/receptionist_robot_ws/EDS_Bot'
+[0.383s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.383s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.395s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/radxa/receptionist_robot_ws/build/receptionist_robot_description': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --build /home/radxa/receptionist_robot_ws/build/receptionist_robot_description -- -j8 -l8
+[0.399s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/radxa/receptionist_robot_ws/build/sllidar_ros2': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --build /home/radxa/receptionist_robot_ws/build/sllidar_ros2 -- -j8 -l8
+[0.406s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/radxa/receptionist_robot_ws/build/eds_bot': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --build /home/radxa/receptionist_robot_ws/build/eds_bot -- -j8 -l8
+[0.525s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/radxa/receptionist_robot_ws/build/eds_bot' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --build /home/radxa/receptionist_robot_ws/build/eds_bot -- -j8 -l8
+[0.547s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/radxa/receptionist_robot_ws/build/eds_bot': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --install /home/radxa/receptionist_robot_ws/build/eds_bot
+[0.556s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/radxa/receptionist_robot_ws/build/receptionist_robot_description' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --build /home/radxa/receptionist_robot_ws/build/receptionist_robot_description -- -j8 -l8
+[0.564s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/radxa/receptionist_robot_ws/build/receptionist_robot_description': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --install /home/radxa/receptionist_robot_ws/build/receptionist_robot_description
+[0.590s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(eds_bot)
+[0.617s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/eds_bot' for CMake module files
+[0.626s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/eds_bot' for CMake config files
+[0.627s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/radxa/receptionist_robot_ws/build/eds_bot' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --install /home/radxa/receptionist_robot_ws/build/eds_bot
+[0.631s] Level 1:colcon.colcon_core.shell:create_environment_hook('eds_bot', 'cmake_prefix_path')
+[0.632s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/hook/cmake_prefix_path.ps1'
+[0.634s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/hook/cmake_prefix_path.dsv'
+[0.635s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/hook/cmake_prefix_path.sh'
+[0.638s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/eds_bot/bin'
+[0.638s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/eds_bot/lib/pkgconfig/eds_bot.pc'
+[0.639s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/eds_bot/lib/python3.12/site-packages'
+[0.641s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/eds_bot/bin'
+[0.642s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/package.ps1'
+[0.646s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/package.dsv'
+[0.648s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/package.sh'
+[0.650s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/package.bash'
+[0.652s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/package.zsh'
+[0.654s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/radxa/receptionist_robot_ws/install/eds_bot/share/colcon-core/packages/eds_bot)
+[0.656s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(eds_bot)
+[0.656s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/eds_bot' for CMake module files
+[0.659s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/eds_bot' for CMake config files
+[0.661s] Level 1:colcon.colcon_core.shell:create_environment_hook('eds_bot', 'cmake_prefix_path')
+[0.662s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/hook/cmake_prefix_path.ps1'
+[0.663s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/hook/cmake_prefix_path.dsv'
+[0.665s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/hook/cmake_prefix_path.sh'
+[0.667s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/eds_bot/bin'
+[0.667s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/eds_bot/lib/pkgconfig/eds_bot.pc'
+[0.668s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/eds_bot/lib/python3.12/site-packages'
+[0.669s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/eds_bot/bin'
+[0.669s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/package.ps1'
+[0.671s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/package.dsv'
+[0.672s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/package.sh'
+[0.673s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/package.bash'
+[0.673s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/package.zsh'
+[0.674s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/radxa/receptionist_robot_ws/install/eds_bot/share/colcon-core/packages/eds_bot)
+[0.676s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(receptionist_robot_description)
+[0.677s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description' for CMake module files
+[0.681s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description' for CMake config files
+[0.682s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/radxa/receptionist_robot_ws/build/receptionist_robot_description' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --install /home/radxa/receptionist_robot_ws/build/receptionist_robot_description
+[0.683s] Level 1:colcon.colcon_core.shell:create_environment_hook('receptionist_robot_description', 'cmake_prefix_path')
+[0.683s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/hook/cmake_prefix_path.ps1'
+[0.684s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/hook/cmake_prefix_path.dsv'
+[0.686s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/hook/cmake_prefix_path.sh'
+[0.687s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/bin'
+[0.688s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/lib/pkgconfig/receptionist_robot_description.pc'
+[0.688s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/lib/python3.12/site-packages'
+[0.689s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/bin'
+[0.689s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/package.ps1'
+[0.691s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/package.dsv'
+[0.692s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/package.sh'
+[0.693s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/package.bash'
+[0.694s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/package.zsh'
+[0.694s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/colcon-core/packages/receptionist_robot_description)
+[0.696s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(receptionist_robot_description)
+[0.696s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description' for CMake module files
+[0.697s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description' for CMake config files
+[0.698s] Level 1:colcon.colcon_core.shell:create_environment_hook('receptionist_robot_description', 'cmake_prefix_path')
+[0.698s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/hook/cmake_prefix_path.ps1'
+[0.699s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/hook/cmake_prefix_path.dsv'
+[0.701s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/hook/cmake_prefix_path.sh'
+[0.703s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/bin'
+[0.703s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/lib/pkgconfig/receptionist_robot_description.pc'
+[0.704s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/lib/python3.12/site-packages'
+[0.705s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/bin'
+[0.705s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/package.ps1'
+[0.706s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/package.dsv'
+[0.710s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/package.sh'
+[0.712s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/package.bash'
+[0.714s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/package.zsh'
+[0.716s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/colcon-core/packages/receptionist_robot_description)
+[0.724s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/radxa/receptionist_robot_ws/build/sllidar_ros2' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --build /home/radxa/receptionist_robot_ws/build/sllidar_ros2 -- -j8 -l8
+[0.724s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/radxa/receptionist_robot_ws/build/sllidar_ros2': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --install /home/radxa/receptionist_robot_ws/build/sllidar_ros2
+[0.763s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(sllidar_ros2)
+[0.764s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/sllidar_ros2' for CMake module files
+[0.772s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/sllidar_ros2' for CMake config files
+[0.775s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/radxa/receptionist_robot_ws/build/sllidar_ros2' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --install /home/radxa/receptionist_robot_ws/build/sllidar_ros2
+[0.776s] Level 1:colcon.colcon_core.shell:create_environment_hook('sllidar_ros2', 'cmake_prefix_path')
+[0.777s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/sllidar_ros2/hook/cmake_prefix_path.ps1'
+[0.779s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/sllidar_ros2/hook/cmake_prefix_path.dsv'
+[0.781s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/sllidar_ros2/hook/cmake_prefix_path.sh'
+[0.783s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/lib'
+[0.784s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/bin'
+[0.784s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/lib/pkgconfig/sllidar_ros2.pc'
+[0.786s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/lib/python3.12/site-packages'
+[0.787s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/bin'
+[0.789s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/sllidar_ros2/package.ps1'
+[0.791s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/sllidar_ros2/package.dsv'
+[0.793s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/sllidar_ros2/package.sh'
+[0.795s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/sllidar_ros2/package.bash'
+[0.796s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/sllidar_ros2/package.zsh'
+[0.797s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/colcon-core/packages/sllidar_ros2)
+[0.799s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(sllidar_ros2)
+[0.800s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/sllidar_ros2' for CMake module files
+[0.803s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/sllidar_ros2' for CMake config files
+[0.804s] Level 1:colcon.colcon_core.shell:create_environment_hook('sllidar_ros2', 'cmake_prefix_path')
+[0.804s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/sllidar_ros2/hook/cmake_prefix_path.ps1'
+[0.806s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/sllidar_ros2/hook/cmake_prefix_path.dsv'
+[0.808s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/sllidar_ros2/hook/cmake_prefix_path.sh'
+[0.811s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/lib'
+[0.811s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/bin'
+[0.812s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/lib/pkgconfig/sllidar_ros2.pc'
+[0.813s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/lib/python3.12/site-packages'
+[0.814s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/bin'
+[0.815s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/sllidar_ros2/package.ps1'
+[0.817s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/sllidar_ros2/package.dsv'
+[0.819s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/sllidar_ros2/package.sh'
+[0.821s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/sllidar_ros2/package.bash'
+[0.823s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/sllidar_ros2/package.zsh'
+[0.825s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/radxa/receptionist_robot_ws/install/sllidar_ros2/share/colcon-core/packages/sllidar_ros2)
+[0.827s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/radxa/receptionist_robot_ws/src/receptionist_robot_bringup' with build type 'ament_cmake'
+[0.827s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/radxa/receptionist_robot_ws/src/receptionist_robot_bringup'
+[0.828s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.828s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.865s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/radxa/receptionist_robot_ws/build/receptionist_robot_bringup': CMAKE_PREFIX_PATH=/home/radxa/receptionist_robot_ws/install/sllidar_ros2:/home/radxa/receptionist_robot_ws/install/receptionist_robot_description:/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup:/home/radxa/turtlebot3_ws/install/turtlebot3:/home/radxa/turtlebot3_ws/install/turtlebot3_bringup:/home/radxa/turtlebot3_ws/install/turtlebot3_node:/home/radxa/turtlebot3_ws/install/turtlebot3_navigation2:/home/radxa/turtlebot3_ws/install/turtlebot3_msgs:/home/radxa/turtlebot3_ws/install/turtlebot3_description:/home/radxa/turtlebot3_ws/install/turtlebot3_cartographer:/home/radxa/turtlebot3_ws/install/sllidar_ros2:/home/radxa/turtlebot3_ws/install/hclidar_driver_ros2:/home/radxa/turtlebot3_ws/install/dynamixel_sdk_examples:/home/radxa/turtlebot3_ws/install/dynamixel_sdk_custom_interfaces:/home/radxa/turtlebot3_ws/install/dynamixel_sdk:/home/radxa/microros_ws/install/micro_ros_agent:/home/radxa/microros_ws/install/micro_ros_msgs:/opt/ros/jazzy/opt/gz_sim_vendor:/opt/ros/jazzy/opt/gz_sensors_vendor:/opt/ros/jazzy/opt/gz_physics_vendor:/opt/ros/jazzy/opt/sdformat_vendor:/opt/ros/jazzy/opt/gz_gui_vendor:/opt/ros/jazzy/opt/gz_transport_vendor:/opt/ros/jazzy/opt/gz_rendering_vendor:/opt/ros/jazzy/opt/gz_plugin_vendor:/opt/ros/jazzy/opt/gz_fuel_tools_vendor:/opt/ros/jazzy/opt/gz_msgs_vendor:/opt/ros/jazzy/opt/gz_common_vendor:/opt/ros/jazzy/opt/gz_math_vendor:/opt/ros/jazzy/opt/gz_utils_vendor:/opt/ros/jazzy/opt/gz_tools_vendor:/opt/ros/jazzy/opt/gz_ogre_next_vendor:/opt/ros/jazzy/opt/gz_dartsim_vendor:/opt/ros/jazzy/opt/gz_cmake_vendor:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --build /home/radxa/receptionist_robot_ws/build/receptionist_robot_bringup -- -j8 -l8
+[0.939s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/radxa/receptionist_robot_ws/build/receptionist_robot_bringup' returned '0': CMAKE_PREFIX_PATH=/home/radxa/receptionist_robot_ws/install/sllidar_ros2:/home/radxa/receptionist_robot_ws/install/receptionist_robot_description:/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup:/home/radxa/turtlebot3_ws/install/turtlebot3:/home/radxa/turtlebot3_ws/install/turtlebot3_bringup:/home/radxa/turtlebot3_ws/install/turtlebot3_node:/home/radxa/turtlebot3_ws/install/turtlebot3_navigation2:/home/radxa/turtlebot3_ws/install/turtlebot3_msgs:/home/radxa/turtlebot3_ws/install/turtlebot3_description:/home/radxa/turtlebot3_ws/install/turtlebot3_cartographer:/home/radxa/turtlebot3_ws/install/sllidar_ros2:/home/radxa/turtlebot3_ws/install/hclidar_driver_ros2:/home/radxa/turtlebot3_ws/install/dynamixel_sdk_examples:/home/radxa/turtlebot3_ws/install/dynamixel_sdk_custom_interfaces:/home/radxa/turtlebot3_ws/install/dynamixel_sdk:/home/radxa/microros_ws/install/micro_ros_agent:/home/radxa/microros_ws/install/micro_ros_msgs:/opt/ros/jazzy/opt/gz_sim_vendor:/opt/ros/jazzy/opt/gz_sensors_vendor:/opt/ros/jazzy/opt/gz_physics_vendor:/opt/ros/jazzy/opt/sdformat_vendor:/opt/ros/jazzy/opt/gz_gui_vendor:/opt/ros/jazzy/opt/gz_transport_vendor:/opt/ros/jazzy/opt/gz_rendering_vendor:/opt/ros/jazzy/opt/gz_plugin_vendor:/opt/ros/jazzy/opt/gz_fuel_tools_vendor:/opt/ros/jazzy/opt/gz_msgs_vendor:/opt/ros/jazzy/opt/gz_common_vendor:/opt/ros/jazzy/opt/gz_math_vendor:/opt/ros/jazzy/opt/gz_utils_vendor:/opt/ros/jazzy/opt/gz_tools_vendor:/opt/ros/jazzy/opt/gz_ogre_next_vendor:/opt/ros/jazzy/opt/gz_dartsim_vendor:/opt/ros/jazzy/opt/gz_cmake_vendor:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --build /home/radxa/receptionist_robot_ws/build/receptionist_robot_bringup -- -j8 -l8
+[0.944s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/radxa/receptionist_robot_ws/build/receptionist_robot_bringup': CMAKE_PREFIX_PATH=/home/radxa/receptionist_robot_ws/install/sllidar_ros2:/home/radxa/receptionist_robot_ws/install/receptionist_robot_description:/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup:/home/radxa/turtlebot3_ws/install/turtlebot3:/home/radxa/turtlebot3_ws/install/turtlebot3_bringup:/home/radxa/turtlebot3_ws/install/turtlebot3_node:/home/radxa/turtlebot3_ws/install/turtlebot3_navigation2:/home/radxa/turtlebot3_ws/install/turtlebot3_msgs:/home/radxa/turtlebot3_ws/install/turtlebot3_description:/home/radxa/turtlebot3_ws/install/turtlebot3_cartographer:/home/radxa/turtlebot3_ws/install/sllidar_ros2:/home/radxa/turtlebot3_ws/install/hclidar_driver_ros2:/home/radxa/turtlebot3_ws/install/dynamixel_sdk_examples:/home/radxa/turtlebot3_ws/install/dynamixel_sdk_custom_interfaces:/home/radxa/turtlebot3_ws/install/dynamixel_sdk:/home/radxa/microros_ws/install/micro_ros_agent:/home/radxa/microros_ws/install/micro_ros_msgs:/opt/ros/jazzy/opt/gz_sim_vendor:/opt/ros/jazzy/opt/gz_sensors_vendor:/opt/ros/jazzy/opt/gz_physics_vendor:/opt/ros/jazzy/opt/sdformat_vendor:/opt/ros/jazzy/opt/gz_gui_vendor:/opt/ros/jazzy/opt/gz_transport_vendor:/opt/ros/jazzy/opt/gz_rendering_vendor:/opt/ros/jazzy/opt/gz_plugin_vendor:/opt/ros/jazzy/opt/gz_fuel_tools_vendor:/opt/ros/jazzy/opt/gz_msgs_vendor:/opt/ros/jazzy/opt/gz_common_vendor:/opt/ros/jazzy/opt/gz_math_vendor:/opt/ros/jazzy/opt/gz_utils_vendor:/opt/ros/jazzy/opt/gz_tools_vendor:/opt/ros/jazzy/opt/gz_ogre_next_vendor:/opt/ros/jazzy/opt/gz_dartsim_vendor:/opt/ros/jazzy/opt/gz_cmake_vendor:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --install /home/radxa/receptionist_robot_ws/build/receptionist_robot_bringup
+[0.995s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(receptionist_robot_bringup)
+[0.997s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup' for CMake module files
+[1.001s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/radxa/receptionist_robot_ws/build/receptionist_robot_bringup' returned '0': CMAKE_PREFIX_PATH=/home/radxa/receptionist_robot_ws/install/sllidar_ros2:/home/radxa/receptionist_robot_ws/install/receptionist_robot_description:/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup:/home/radxa/turtlebot3_ws/install/turtlebot3:/home/radxa/turtlebot3_ws/install/turtlebot3_bringup:/home/radxa/turtlebot3_ws/install/turtlebot3_node:/home/radxa/turtlebot3_ws/install/turtlebot3_navigation2:/home/radxa/turtlebot3_ws/install/turtlebot3_msgs:/home/radxa/turtlebot3_ws/install/turtlebot3_description:/home/radxa/turtlebot3_ws/install/turtlebot3_cartographer:/home/radxa/turtlebot3_ws/install/sllidar_ros2:/home/radxa/turtlebot3_ws/install/hclidar_driver_ros2:/home/radxa/turtlebot3_ws/install/dynamixel_sdk_examples:/home/radxa/turtlebot3_ws/install/dynamixel_sdk_custom_interfaces:/home/radxa/turtlebot3_ws/install/dynamixel_sdk:/home/radxa/microros_ws/install/micro_ros_agent:/home/radxa/microros_ws/install/micro_ros_msgs:/opt/ros/jazzy/opt/gz_sim_vendor:/opt/ros/jazzy/opt/gz_sensors_vendor:/opt/ros/jazzy/opt/gz_physics_vendor:/opt/ros/jazzy/opt/sdformat_vendor:/opt/ros/jazzy/opt/gz_gui_vendor:/opt/ros/jazzy/opt/gz_transport_vendor:/opt/ros/jazzy/opt/gz_rendering_vendor:/opt/ros/jazzy/opt/gz_plugin_vendor:/opt/ros/jazzy/opt/gz_fuel_tools_vendor:/opt/ros/jazzy/opt/gz_msgs_vendor:/opt/ros/jazzy/opt/gz_common_vendor:/opt/ros/jazzy/opt/gz_math_vendor:/opt/ros/jazzy/opt/gz_utils_vendor:/opt/ros/jazzy/opt/gz_tools_vendor:/opt/ros/jazzy/opt/gz_ogre_next_vendor:/opt/ros/jazzy/opt/gz_dartsim_vendor:/opt/ros/jazzy/opt/gz_cmake_vendor:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --install /home/radxa/receptionist_robot_ws/build/receptionist_robot_bringup
+[1.003s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup' for CMake config files
+[1.005s] Level 1:colcon.colcon_core.shell:create_environment_hook('receptionist_robot_bringup', 'cmake_prefix_path')
+[1.006s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/hook/cmake_prefix_path.ps1'
+[1.009s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/hook/cmake_prefix_path.dsv'
+[1.010s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/hook/cmake_prefix_path.sh'
+[1.013s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/bin'
+[1.013s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/lib/pkgconfig/receptionist_robot_bringup.pc'
+[1.015s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/lib/python3.12/site-packages'
+[1.019s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/bin'
+[1.020s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/package.ps1'
+[1.025s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/package.dsv'
+[1.026s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/package.sh'
+[1.029s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/package.bash'
+[1.031s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/package.zsh'
+[1.032s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/colcon-core/packages/receptionist_robot_bringup)
+[1.035s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(receptionist_robot_bringup)
+[1.037s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup' for CMake module files
+[1.041s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup' for CMake config files
+[1.042s] Level 1:colcon.colcon_core.shell:create_environment_hook('receptionist_robot_bringup', 'cmake_prefix_path')
+[1.043s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/hook/cmake_prefix_path.ps1'
+[1.044s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/hook/cmake_prefix_path.dsv'
+[1.046s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/hook/cmake_prefix_path.sh'
+[1.048s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/bin'
+[1.048s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/lib/pkgconfig/receptionist_robot_bringup.pc'
+[1.049s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/lib/python3.12/site-packages'
+[1.051s] Level 1:colcon.colcon_core.environment:checking '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/bin'
+[1.052s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/package.ps1'
+[1.055s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/package.dsv'
+[1.062s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/package.sh'
+[1.066s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/package.bash'
+[1.068s] INFO:colcon.colcon_core.shell:Creating package script '/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/package.zsh'
+[1.072s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/colcon-core/packages/receptionist_robot_bringup)
+[1.074s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:closing loop
+[1.075s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:loop closed
+[1.076s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete finished with '0'
+[1.076s] DEBUG:colcon.colcon_core.event_reactor:joining thread
+[1.079s] DEBUG:colcon.colcon_core.event_reactor:joined thread
+[1.080s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/radxa/receptionist_robot_ws/install/local_setup.ps1'
+[1.082s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/radxa/receptionist_robot_ws/install/_local_setup_util_ps1.py'
+[1.085s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/radxa/receptionist_robot_ws/install/setup.ps1'
+[1.087s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/radxa/receptionist_robot_ws/install/local_setup.sh'
+[1.088s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/radxa/receptionist_robot_ws/install/_local_setup_util_sh.py'
+[1.090s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/radxa/receptionist_robot_ws/install/setup.sh'
+[1.094s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/radxa/receptionist_robot_ws/install/local_setup.bash'
+[1.095s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/radxa/receptionist_robot_ws/install/setup.bash'
+[1.099s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/radxa/receptionist_robot_ws/install/local_setup.zsh'
+[1.100s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/radxa/receptionist_robot_ws/install/setup.zsh'

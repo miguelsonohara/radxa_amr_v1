@@ -1,0 +1,249 @@
+[INFO] [launch]: All log files can be found below /home/radxa/.ros/log/2026-07-10-14-11-17-038638-radxa-dragon-q6a-86713
+[INFO] [launch]: Default logging verbosity is set to INFO
+[WARN] [1783667477.205111980] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[WARN] [1783667477.205160207] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[INFO] [micro_ros_agent-1]: process started with pid [86741]
+[INFO] [sllidar_node-2]: process started with pid [86742]
+[INFO] [robot_state_publisher-3]: process started with pid [86743]
+[INFO] [async_slam_toolbox_node-4]: process started with pid [86744]
+[INFO] [controller_server-5]: process started with pid [86745]
+[INFO] [smoother_server-6]: process started with pid [86746]
+[INFO] [planner_server-7]: process started with pid [86747]
+[INFO] [route_server-8]: process started with pid [86748]
+[INFO] [behavior_server-9]: process started with pid [86749]
+[INFO] [bt_navigator-10]: process started with pid [86751]
+[INFO] [waypoint_follower-11]: process started with pid [86752]
+[INFO] [velocity_smoother-12]: process started with pid [86753]
+[INFO] [collision_monitor-13]: process started with pid [86754]
+[INFO] [opennav_docking-14]: process started with pid [86755]
+[INFO] [lifecycle_manager-15]: process started with pid [86756]
+[async_slam_toolbox_node-4] [WARN] [1783667477.624988810] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[async_slam_toolbox_node-4] [WARN] [1783667477.625025372] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[smoother_server-6] [WARN] [1783667477.631864761] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[smoother_server-6] [WARN] [1783667477.631907364] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[planner_server-7] [WARN] [1783667477.642687549] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[planner_server-7] [WARN] [1783667477.645325475] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sllidar_node-2] [WARN] [1783667477.656998076] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sllidar_node-2] [WARN] [1783667477.657035940] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[micro_ros_agent-1] [35m[1783667477.658073][m info     | [34mTermiosAgentLinux.cpp[m | [37minit                    [m | [32mrunning...[m             | fd: 14
+[micro_ros_agent-1] [35m[1783667477.658542][m info     | [34mRoot.cpp          [m | [37mset_verbose_level       [m | [32mlogger setup[m           | verbose_level: 4
+[velocity_smoother-12] [WARN] [1783667477.671666039] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[velocity_smoother-12] [WARN] [1783667477.671706714] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[lifecycle_manager-15] [WARN] [1783667477.694909994] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[lifecycle_manager-15] [WARN] [1783667477.694952962] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[robot_state_publisher-3] [WARN] [1783667477.697283763] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[robot_state_publisher-3] [WARN] [1783667477.697325168] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[planner_server-7] [INFO] [1783667477.708525755] [planner_server]: 
+[planner_server-7] 	planner_server lifecycle node launched. 
+[planner_server-7] 	Waiting on external lifecycle transitions to activate
+[planner_server-7] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[async_slam_toolbox_node-4] [INFO] [1783667477.709350517] [slam_toolbox]: Node using stack size 40000000
+[planner_server-7] [INFO] [1783667477.722802846] [planner_server]: Creating
+[sllidar_node-2] [INFO] [1783667477.725476864] [sllidar_node]: SLLidar running on ROS2 package SLLidar.ROS2 SDK Version:1.0.1, SLLIDAR SDK Version:2.1.0
+[bt_navigator-10] [WARN] [1783667477.726896605] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[bt_navigator-10] [WARN] [1783667477.726928583] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[waypoint_follower-11] [WARN] [1783667477.740333101] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[waypoint_follower-11] [WARN] [1783667477.740454607] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[behavior_server-9] [WARN] [1783667477.741741384] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[behavior_server-9] [WARN] [1783667477.741820339] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[smoother_server-6] [INFO] [1783667477.753236439] [smoother_server]: 
+[smoother_server-6] 	smoother_server lifecycle node launched. 
+[smoother_server-6] 	Waiting on external lifecycle transitions to activate
+[smoother_server-6] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[smoother_server-6] [INFO] [1783667477.758982639] [smoother_server]: Creating smoother server
+[opennav_docking-14] [WARN] [1783667477.767686388] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[opennav_docking-14] [WARN] [1783667477.767731491] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[velocity_smoother-12] [INFO] [1783667477.781046533] [velocity_smoother]: 
+[velocity_smoother-12] 	velocity_smoother lifecycle node launched. 
+[velocity_smoother-12] 	Waiting on external lifecycle transitions to activate
+[velocity_smoother-12] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[collision_monitor-13] [WARN] [1783667477.793383329] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[collision_monitor-13] [WARN] [1783667477.793422911] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[planner_server-7] [INFO] [1783667477.802061611] [global_costmap.global_costmap]: 
+[planner_server-7] 	global_costmap lifecycle node launched. 
+[planner_server-7] 	Waiting on external lifecycle transitions to activate
+[planner_server-7] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[planner_server-7] [INFO] [1783667477.804737296] [global_costmap.global_costmap]: Creating Costmap
+[route_server-8] [WARN] [1783667477.803921544] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[route_server-8] [WARN] [1783667477.803998624] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[controller_server-5] [WARN] [1783667477.818923036] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[controller_server-5] [WARN] [1783667477.819060999] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[lifecycle_manager-15] [INFO] [1783667477.824670642] [lifecycle_manager_navigation]: Creating
+[async_slam_toolbox_node-4] [INFO] [1783667477.851979139] [slam_toolbox]: Configuring
+[lifecycle_manager-15] [INFO] [1783667477.856923909] [lifecycle_manager_navigation]: [34m[1mCreating and initializing lifecycle service clients[0m[0m
+[robot_state_publisher-3] [INFO] [1783667477.897500888] [robot_state_publisher]: Robot initialized
+[async_slam_toolbox_node-4] [INFO] [1783667477.912895594] [slam_toolbox]: Using solver plugin solver_plugins::CeresSolver
+[async_slam_toolbox_node-4] [INFO] [1783667477.920634743] [slam_toolbox]: CeresSolver: Using SCHUR_JACOBI preconditioner.
+[bt_navigator-10] [INFO] [1783667477.941961997] [bt_navigator]: 
+[bt_navigator-10] 	bt_navigator lifecycle node launched. 
+[bt_navigator-10] 	Waiting on external lifecycle transitions to activate
+[bt_navigator-10] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[bt_navigator-10] [INFO] [1783667477.949981292] [bt_navigator]: Creating
+[opennav_docking-14] [INFO] [1783667478.010624633] [docking_server]: 
+[opennav_docking-14] 	docking_server lifecycle node launched. 
+[opennav_docking-14] 	Waiting on external lifecycle transitions to activate
+[opennav_docking-14] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[opennav_docking-14] [INFO] [1783667478.010840719] [docking_server]: Creating docking_server
+[waypoint_follower-11] [INFO] [1783667478.012320457] [waypoint_follower]: 
+[waypoint_follower-11] 	waypoint_follower lifecycle node launched. 
+[waypoint_follower-11] 	Waiting on external lifecycle transitions to activate
+[waypoint_follower-11] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[waypoint_follower-11] [INFO] [1783667478.013733063] [waypoint_follower]: Creating
+[behavior_server-9] [INFO] [1783667478.046154501] [behavior_server]: 
+[behavior_server-9] 	behavior_server lifecycle node launched. 
+[behavior_server-9] 	Waiting on external lifecycle transitions to activate
+[behavior_server-9] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[route_server-8] [INFO] [1783667478.059123878] [route_server]: 
+[route_server-8] 	route_server lifecycle node launched. 
+[route_server-8] 	Waiting on external lifecycle transitions to activate
+[route_server-8] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[controller_server-5] [INFO] [1783667478.076905322] [controller_server]: 
+[controller_server-5] 	controller_server lifecycle node launched. 
+[controller_server-5] 	Waiting on external lifecycle transitions to activate
+[controller_server-5] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[controller_server-5] [INFO] [1783667478.088863017] [controller_server]: Creating controller server
+[collision_monitor-13] [INFO] [1783667478.093806797] [collision_monitor]: 
+[collision_monitor-13] 	collision_monitor lifecycle node launched. 
+[collision_monitor-13] 	Waiting on external lifecycle transitions to activate
+[collision_monitor-13] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[async_slam_toolbox_node-4] Load From File /home/radxa/receptionist_robot_ws/map/test_map_1.posegraph 
+[async_slam_toolbox_node-4] Mapper <- Module
+[async_slam_toolbox_node-4] Mapper <- m_pSequentialScanMatcher
+[async_slam_toolbox_node-4] Mapper <- m_pGraph
+[async_slam_toolbox_node-4] MapperGraph <- Graph; Graph <- m_Edges; Graph <- m_Vertices
+[async_slam_toolbox_node-4] MapperGraph <- m_pMapper; MapperGraph <- m_pLoopScanMatcher; MapperGraph <- m_pTraversal
+[async_slam_toolbox_node-4] Mapper <- m_pMapperSensorManager
+[async_slam_toolbox_node-4] MapperSensorManager <- m_ScanManagers; MapperSensorManager <- m_Scans
+[async_slam_toolbox_node-4] Mapper <- m_Listeners
+[async_slam_toolbox_node-4] **Finished serializing Mapper**
+[async_slam_toolbox_node-4] Load From File
+[async_slam_toolbox_node-4] **Serializing Dataset**
+[async_slam_toolbox_node-4] Dataset <- m_SensorNameLookup
+[async_slam_toolbox_node-4] Dataset <- m_Data
+[async_slam_toolbox_node-4] Dataset <- m_Lasers
+[async_slam_toolbox_node-4] Dataset <- m_pDatasetInfo
+[async_slam_toolbox_node-4] **Finished serializing Dataset**
+[async_slam_toolbox_node-4] Registering sensor: [Custom Described Lidar]
+[async_slam_toolbox_node-4] WARNING: Logging before InitGoogleLogging() is written to STDERR
+[async_slam_toolbox_node-4] W20260710 14:11:18.159166 86744 preprocessor.cc:67] Specified options.num_threads: 50 exceeds maximum available from the threading model Ceres was compiled with: 8.  Bounding to maximum number available.
+[controller_server-5] [INFO] [1783667478.164972415] [local_costmap.local_costmap]: 
+[controller_server-5] 	local_costmap lifecycle node launched. 
+[controller_server-5] 	Waiting on external lifecycle transitions to activate
+[controller_server-5] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[controller_server-5] [INFO] [1783667478.166239817] [local_costmap.local_costmap]: Creating Costmap
+[lifecycle_manager-15] [INFO] [1783667478.174048182] [lifecycle_manager_navigation]: [34m[1mStarting managed nodes bringup...[0m[0m
+[lifecycle_manager-15] [INFO] [1783667478.174189323] [lifecycle_manager_navigation]: [34m[1mConfiguring controller_server[0m[0m
+[INFO] [launch.user]: [LifecycleLaunch] Slamtoolbox node is activating.
+[async_slam_toolbox_node-4] [INFO] [1783667478.184911437] [slam_toolbox]: Activating
+[sllidar_node-2] [INFO] [1783667478.240050288] [sllidar_node]: SLLidar S/N: DEEDE0F8C6E599D6B5E29FF65D384D19
+[sllidar_node-2] [INFO] [1783667478.240110442] [sllidar_node]: Firmware Ver: 1.02
+[sllidar_node-2] [INFO] [1783667478.240122473] [sllidar_node]: Hardware Rev: 18
+[sllidar_node-2] [INFO] [1783667478.242757586] [sllidar_node]: SLLidar health status : 0
+[sllidar_node-2] [INFO] [1783667478.242817011] [sllidar_node]: SLLidar health status : OK.
+[controller_server-5] [INFO] [1783667478.314924470] [controller_server]: Configuring controller interface
+[controller_server-5] [INFO] [1783667478.314987228] [controller_server]: getting progress checker plugins..
+[controller_server-5] [INFO] [1783667478.315531011] [controller_server]: getting goal checker plugins..
+[controller_server-5] [INFO] [1783667478.316207549] [controller_server]: Controller frequency set to 20.0000Hz
+[controller_server-5] [INFO] [1783667478.316296400] [local_costmap.local_costmap]: Configuring
+[controller_server-5] [INFO] [1783667478.329357024] [local_costmap.local_costmap]: Using plugin "obstacle_layer"
+[controller_server-5] [INFO] [1783667478.334211380] [local_costmap.local_costmap]: Subscribed to Topics: scan
+[controller_server-5] [INFO] [1783667478.339519627] [local_costmap.local_costmap]: Initialized plugin "obstacle_layer"
+[controller_server-5] [INFO] [1783667478.339585145] [local_costmap.local_costmap]: Using plugin "inflation_layer"
+[controller_server-5] [INFO] [1783667478.340096013] [local_costmap.local_costmap]: Initialized plugin "inflation_layer"
+[controller_server-5] [INFO] [1783667478.377984233] [controller_server]: Created progress_checker : progress_checker of type nav2_controller::SimpleProgressChecker
+[controller_server-5] [INFO] [1783667478.378475518] [controller_server]: Controller Server has progress_checker  progress checkers available.
+[controller_server-5] [INFO] [1783667478.379344393] [controller_server]: Created goal checker : general_goal_checker of type nav2_controller::SimpleGoalChecker
+[controller_server-5] [INFO] [1783667478.379739170] [controller_server]: Controller Server has general_goal_checker  goal checkers available.
+[controller_server-5] [INFO] [1783667478.381680090] [controller_server]: Created controller : FollowPath of type nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
+[controller_server-5] [INFO] [1783667478.390379204] [controller_server]: Controller Server has FollowPath  controllers available.
+[lifecycle_manager-15] [INFO] [1783667478.410011935] [lifecycle_manager_navigation]: [34m[1mConfiguring smoother_server[0m[0m
+[smoother_server-6] [INFO] [1783667478.410488325] [smoother_server]: Configuring smoother server
+[smoother_server-6] [INFO] [1783667478.433653898] [smoother_server]: Created smoother : simple_smoother of type nav2_smoother::SimpleSmoother
+[smoother_server-6] [INFO] [1783667478.435859860] [smoother_server]: Smoother Server has simple_smoother  smoothers available.
+[lifecycle_manager-15] [INFO] [1783667478.450554488] [lifecycle_manager_navigation]: [34m[1mConfiguring planner_server[0m[0m
+[planner_server-7] [INFO] [1783667478.451271702] [planner_server]: Configuring
+[planner_server-7] [INFO] [1783667478.451338574] [global_costmap.global_costmap]: Configuring
+[planner_server-7] [INFO] [1783667478.466645420] [global_costmap.global_costmap]: Using plugin "static_layer"
+[planner_server-7] [INFO] [1783667478.471888512] [global_costmap.global_costmap]: Subscribing to the map topic (/map) with transient local durability
+[planner_server-7] [INFO] [1783667478.475718479] [global_costmap.global_costmap]: Initialized plugin "static_layer"
+[planner_server-7] [INFO] [1783667478.475775195] [global_costmap.global_costmap]: Using plugin "obstacle_layer"
+[planner_server-7] [INFO] [1783667478.477413001] [global_costmap.global_costmap]: Subscribed to Topics: scan
+[planner_server-7] [INFO] [1783667478.485295009] [global_costmap.global_costmap]: Initialized plugin "obstacle_layer"
+[planner_server-7] [INFO] [1783667478.485358028] [global_costmap.global_costmap]: Using plugin "inflation_layer"
+[planner_server-7] [INFO] [1783667478.487608468] [global_costmap.global_costmap]: Initialized plugin "inflation_layer"
+[sllidar_node-2] [INFO] [1783667478.491377551] [sllidar_node]: current scan mode: DenseBoost, sample rate: 5 Khz, max_distance: 40.0 m, scan frequency:10.0 Hz, 
+[planner_server-7] [INFO] [1783667478.533263024] [global_costmap.global_costmap]: StaticLayer: Resizing costmap to 237 X 134 at 0.050000 m/pix
+[planner_server-7] [INFO] [1783667478.533352083] [planner_server]: Created global planner plugin GridBased of type nav2_navfn_planner::NavfnPlanner
+[planner_server-7] [INFO] [1783667478.533491922] [planner_server]: Configuring plugin GridBased of type NavfnPlanner
+[planner_server-7] [INFO] [1783667478.534091431] [planner_server]: Planner Server has GridBased  planners available.
+[lifecycle_manager-15] [INFO] [1783667478.553609636] [lifecycle_manager_navigation]: [34m[1mConfiguring route_server[0m[0m
+[route_server-8] [INFO] [1783667478.554026756] [route_server]: Configuring
+[route_server-8] [INFO] [1783667478.606929228] [route_server]: Created GraphFileLoader GeoJsonGraphFileLoader of type nav2_route::GeoJsonGraphFileLoader
+[route_server-8] [INFO] [1783667478.606995059] [route_server]: Configuring geojson graph file loader
+[route_server-8] [INFO] [1783667478.607010788] [route_server]: No graph file provided to load yet.
+[route_server-8] [INFO] [1783667478.610089219] [route_server]: Created edge cost function plugin DistanceScorer of type nav2_route::DistanceScorer
+[route_server-8] [INFO] [1783667478.610156977] [route_server]: Configuring distance scorer.
+[route_server-8] [INFO] [1783667478.610508475] [route_server]: Created edge cost function plugin CostmapScorer of type nav2_route::CostmapScorer
+[route_server-8] [INFO] [1783667478.610535453] [route_server]: Configuring costmap scorer.
+[route_server-8] [INFO] [1783667478.613711537] [route_server]: Created route operation AdjustSpeedLimit of type nav2_route::AdjustSpeedLimit
+[route_server-8] [INFO] [1783667478.613774451] [route_server]: Configuring Adjust speed limit operation.
+[route_server-8] [INFO] [1783667478.616368420] [route_server]: Created route operation ReroutingService of type nav2_route::ReroutingService
+[route_server-8] [INFO] [1783667478.616441699] [route_server]: Configuring Rerouting service operation.
+[route_server-8] [INFO] [1783667478.619744705] [route_server]: Created route operation CollisionMonitor of type nav2_route::CollisionMonitor
+[route_server-8] [INFO] [1783667478.619944177] [route_server]: Using costmap topic: local_costmap/costmap_raw instead of server costmap topic: global_costmap/costmap_raw for CollisionMonitor.
+[lifecycle_manager-15] [INFO] [1783667478.626904760] [lifecycle_manager_navigation]: [34m[1mConfiguring behavior_server[0m[0m
+[behavior_server-9] [INFO] [1783667478.627798165] [behavior_server]: Configuring
+[behavior_server-9] [INFO] [1783667478.648226337] [behavior_server]: Creating behavior plugin spin of type nav2_behaviors::Spin
+[behavior_server-9] [INFO] [1783667478.652978145] [behavior_server]: Creating behavior plugin backup of type nav2_behaviors::BackUp
+[behavior_server-9] [INFO] [1783667478.657576417] [behavior_server]: Creating behavior plugin wait of type nav2_behaviors::Wait
+[behavior_server-9] [INFO] [1783667478.685620617] [behavior_server]: Configuring spin
+[behavior_server-9] [INFO] [1783667478.699897291] [behavior_server]: Configuring backup
+[behavior_server-9] [INFO] [1783667478.710135673] [behavior_server]: Configuring wait
+[lifecycle_manager-15] [INFO] [1783667478.719782253] [lifecycle_manager_navigation]: [34m[1mConfiguring velocity_smoother[0m[0m
+[velocity_smoother-12] [INFO] [1783667478.720517852] [velocity_smoother]: Configuring velocity smoother
+[lifecycle_manager-15] [INFO] [1783667478.741323301] [lifecycle_manager_navigation]: [34m[1mConfiguring collision_monitor[0m[0m
+[collision_monitor-13] [INFO] [1783667478.742423314] [collision_monitor]: Configuring
+[collision_monitor-13] [INFO] [1783667478.775903464] [collision_monitor]: [scan]: Creating Scan
+[collision_monitor-13] [INFO] [1783667478.788068964] [collision_monitor]: [FootprintApproach]: Creating Polygon
+[collision_monitor-13] [INFO] [1783667478.788783417] [collision_monitor]: [FootprintApproach]: Polygon points are not defined. Using dynamic subscription instead.
+[collision_monitor-13] [INFO] [1783667478.792127516] [collision_monitor]: [FootprintApproach]: Making footprint subscriber on /local_costmap/published_footprint topic
+[lifecycle_manager-15] [INFO] [1783667478.834354747] [lifecycle_manager_navigation]: [34m[1mConfiguring bt_navigator[0m[0m
+[bt_navigator-10] [INFO] [1783667478.835314192] [bt_navigator]: Configuring
+[bt_navigator-10] [INFO] [1783667478.865355507] [bt_navigator]: Creating navigator id navigate_to_pose of type nav2_bt_navigator::NavigateToPoseNavigator
+[bt_navigator-10] [INFO] [1783667478.975559981] [bt_navigator]: Creating navigator id navigate_through_poses of type nav2_bt_navigator::NavigateThroughPosesNavigator
+[lifecycle_manager-15] [INFO] [1783667479.027974085] [lifecycle_manager_navigation]: [34m[1mConfiguring waypoint_follower[0m[0m
+[waypoint_follower-11] [INFO] [1783667479.028724683] [waypoint_follower]: Configuring
+[waypoint_follower-11] [INFO] [1783667479.114069634] [waypoint_follower]: Created waypoint_task_executor : wait_at_waypoint of type nav2_waypoint_follower::WaitAtWaypoint
+[lifecycle_manager-15] [INFO] [1783667479.119799167] [lifecycle_manager_navigation]: [34m[1mConfiguring docking_server[0m[0m
+[opennav_docking-14] [INFO] [1783667479.120887826] [docking_server]: Configuring docking_server
+[opennav_docking-14] [INFO] [1783667479.121002926] [docking_server]: Controller frequency set to 50.0000Hz
+[opennav_docking-14] [INFO] [1783667479.207795689] [docking_server]: Created charging dock plugin simple_charging_dock of type opennav_docking::SimpleChargingDock
+[opennav_docking-14] [WARN] [1783667479.214384619] [docking_server]: Dock database filepath nor dock parameters set. Docking actions can only be executed specifying the dock pose via the action request. Or update the dock database via the reload_database service.
+[opennav_docking-14] [INFO] [1783667479.214460501] [docking_server]: Docking Server has 1 dock types and 0 dock instances available.
+[lifecycle_manager-15] [INFO] [1783667479.218244011] [lifecycle_manager_navigation]: [34m[1mActivating controller_server[0m[0m
+[controller_server-5] [INFO] [1783667479.218703109] [controller_server]: Activating
+[controller_server-5] [INFO] [1783667479.218755503] [local_costmap.local_costmap]: Activating
+[controller_server-5] [INFO] [1783667479.218770086] [local_costmap.local_costmap]: Checking transform
+[controller_server-5] [INFO] [1783667479.218816490] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-5] [INFO] [1783667479.719130783] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-5] [INFO] [1783667480.218912645] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-5] [INFO] [1783667480.718919964] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[async_slam_toolbox_node-4] [INFO] [1783667480.820974208] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1783667480.493 for reason 'discarding message because the queue is full'
+[controller_server-5] [INFO] [1783667481.218912593] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-5] [INFO] [1783667481.719001571] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-5] [INFO] [1783667482.218932791] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-5] [INFO] [1783667482.719120770] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-5] [INFO] [1783667483.219156721] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[async_slam_toolbox_node-4] [INFO] [1783667483.386073209] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1783667483.190 for reason 'discarding message because the queue is full'
+[controller_server-5] [INFO] [1783667483.718989395] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-5] [INFO] [1783667484.219025653] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-5] [INFO] [1783667484.718979359] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-5] [INFO] [1783667485.218965978] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-5] [INFO] [1783667485.718971499] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[async_slam_toolbox_node-4] [INFO] [1783667485.981965303] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1783667485.778 for reason 'discarding message because the queue is full'
+[controller_server-5] [INFO] [1783667486.218926969] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-5] [INFO] [1783667486.718982327] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-5] [INFO] [1783667487.219696721] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-5] [INFO] [1783667487.718973040] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-5] [INFO] [1783667488.218952039] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[async_slam_toolbox_node-4] [INFO] [1783667488.570711174] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1783667488.375 for reason 'discarding message because the queue is full'

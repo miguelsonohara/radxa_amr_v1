@@ -1,0 +1,4 @@
+source;share/eds_bot/local_setup.bash
+source;share/eds_bot/local_setup.dsv
+source;share/eds_bot/local_setup.sh
+source;share/eds_bot/local_setup.zsh

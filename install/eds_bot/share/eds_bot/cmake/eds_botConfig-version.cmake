@@ -1,0 +1,1 @@
+/home/radxa/receptionist_robot_ws/build/eds_bot/ament_cmake_core/eds_botConfig-version.cmake

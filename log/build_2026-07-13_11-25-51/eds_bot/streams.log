@@ -1,0 +1,84 @@
+[0.019s] Invoking command in '/home/radxa/receptionist_robot_ws/build/eds_bot': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake /home/radxa/receptionist_robot_ws/EDS_Bot -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/radxa/receptionist_robot_ws/install/eds_bot
+[0.438s] -- The C compiler identification is GNU 13.3.0
+[0.907s] -- The CXX compiler identification is GNU 13.3.0
+[0.959s] -- Detecting C compiler ABI info
+[1.203s] -- Detecting C compiler ABI info - done
+[1.217s] -- Check for working C compiler: /usr/bin/cc - skipped
+[1.218s] -- Detecting C compile features
+[1.220s] -- Detecting C compile features - done
+[1.250s] -- Detecting CXX compiler ABI info
+[1.458s] -- Detecting CXX compiler ABI info - done
+[1.472s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[1.472s] -- Detecting CXX compile features
+[1.472s] -- Detecting CXX compile features - done
+[1.516s] -- Found ament_cmake: 2.5.6 (/opt/ros/jazzy/share/ament_cmake/cmake)
+[1.897s] -- Found Python3: /usr/bin/python3 (found version "3.12.3") found components: Interpreter 
+[2.050s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[2.183s] -- Found ament_lint_auto: 0.17.5 (/opt/ros/jazzy/share/ament_lint_auto/cmake)
+[2.431s] -- Added test 'copyright' to check source files copyright and LICENSE
+[2.440s] -- Added test 'flake8' to check Python code syntax and style conventions
+[2.442s] -- Configured 'flake8' exclude dirs and/or files: 
+[2.446s] -- Added test 'lint_cmake' to check CMake code style
+[2.449s] -- Added test 'pep257' to check Python code against some of the docstring style conventions in PEP 257
+[2.454s] -- Added test 'xmllint' to check XML markup files
+[2.454s] -- Configuring done (2.4s)
+[2.460s] -- Generating done (0.0s)
+[2.461s] -- Build files have been written to: /home/radxa/receptionist_robot_ws/build/eds_bot
+[2.475s] Invoked command in '/home/radxa/receptionist_robot_ws/build/eds_bot' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake /home/radxa/receptionist_robot_ws/EDS_Bot -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/radxa/receptionist_robot_ws/install/eds_bot
+[2.478s] Invoking command in '/home/radxa/receptionist_robot_ws/build/eds_bot': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --build /home/radxa/receptionist_robot_ws/build/eds_bot -- -j8 -l8
+[2.575s] Invoked command in '/home/radxa/receptionist_robot_ws/build/eds_bot' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --build /home/radxa/receptionist_robot_ws/build/eds_bot -- -j8 -l8
+[2.579s] Invoking command in '/home/radxa/receptionist_robot_ws/build/eds_bot': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --install /home/radxa/receptionist_robot_ws/build/eds_bot
+[2.590s] -- Install configuration: ""
+[2.592s] -- Execute custom install script
+[2.593s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/config/ball_tracker_params_robot.yaml
+[2.606s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/config/ball_tracker_params_sim.yaml
+[2.619s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/config/drive_bot.rviz
+[2.648s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/config/empty.yaml
+[2.661s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/config/gaz_ros2_ctl_use_sim.yaml
+[2.677s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/config/gz_bridge.yaml
+[2.691s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/config/joystick.yaml
+[2.703s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/config/main.rviz
+[2.720s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/config/map.rviz
+[2.737s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/config/mapper_params_online_async.yaml
+[2.753s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/config/my_controllers.yaml
+[2.775s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/config/nav2_params.yaml
+[2.785s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/config/twist_mux.yaml
+[2.821s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/config/view_bot.rviz
+[2.844s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/description/camera.xacro
+[2.873s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/description/depth_camera.xacro
+[2.893s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/description/face.xacro
+[2.926s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/description/gazebo_control.xacro
+[2.942s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/description/inertial_macros.xacro
+[2.957s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/description/lidar.xacro
+[2.974s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/description/robot.urdf.xacro
+[2.989s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/description/robot_core.xacro
+[3.006s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/description/ros2_control.xacro
+[3.021s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/launch/ball_tracker.launch.py
+[3.034s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/launch/camera.launch.py
+[3.049s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/launch/joystick.launch.py
+[3.064s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/launch/launch_dev_ws.py
+[3.078s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/launch/launch_robot.launch.py
+[3.092s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/launch/launch_sim.launch.py
+[3.106s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/launch/ld19lidar.launch.py
+[3.121s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/launch/localization_launch.py
+[3.136s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/launch/navigation_launch.py
+[3.153s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/launch/online_async_launch.py
+[3.168s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/launch/rsp.launch.py
+[3.184s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/worlds/empty.world
+[3.199s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/worlds/obstacles.world
+[3.217s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/ament_index/resource_index/package_run_dependencies/eds_bot
+[3.233s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/ament_index/resource_index/parent_prefix_path/eds_bot
+[3.250s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/environment/ament_prefix_path.sh
+[3.269s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/environment/ament_prefix_path.dsv
+[3.289s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/environment/path.sh
+[3.306s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/environment/path.dsv
+[3.324s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/local_setup.bash
+[3.343s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/local_setup.sh
+[3.361s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/local_setup.zsh
+[3.380s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/local_setup.dsv
+[3.395s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/package.dsv
+[3.413s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/ament_index/resource_index/packages/eds_bot
+[3.428s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/cmake/eds_botConfig.cmake
+[3.443s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/cmake/eds_botConfig-version.cmake
+[3.461s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/eds_bot/share/eds_bot/package.xml
+[3.489s] Invoked command in '/home/radxa/receptionist_robot_ws/build/eds_bot' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --install /home/radxa/receptionist_robot_ws/build/eds_bot

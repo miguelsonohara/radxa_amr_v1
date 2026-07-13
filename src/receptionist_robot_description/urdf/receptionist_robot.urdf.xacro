@@ -1,0 +1,258 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="receptionist_robot">
+
+  <!-- ==================================================================== -->
+  <!-- PROPERTIES & PARAMETERS (Can be easily tuned)                        -->
+  <!-- ==================================================================== -->
+
+  <!-- Wheel specifications -->
+  <!-- Wheel diameter: 0.065m (6.5cm), radius: 0.0325m -->
+  <xacro:property name="wheel_radius" value="0.0325" />
+  <!-- Wheel width (thickness): 0.025m (2.5cm) -->
+  <xacro:property name="wheel_width" value="0.03" />
+  <!-- Wheelbase: 0.30m (30.0cm) separation between wheels along Y-axis -->
+  <xacro:property name="wheelbase" value="0.30" />
+  <!-- Wheel mass: 0.15kg -->
+  <xacro:property name="wheel_mass" value="0.15" />
+
+  <!-- Chassis specifications -->
+  <!-- Cylindrical chassis representing a standard tall receptionist robot -->
+  <xacro:property name="chassis_radius" value="0.18" />
+  <xacro:property name="chassis_height" value="0.50" />
+  <xacro:property name="chassis_mass" value="10.0" />
+
+  <!-- Caster specifications -->
+  <!-- Sphere caster diameter is sized to touch the ground.
+       Since base_link is at z = wheel_radius (0.0325m) above ground:
+       We use a caster of radius 0.02m. Joint offset in Z must be:
+       -(wheel_radius - caster_radius) = -(0.0325 - 0.020) = -0.0125m -->
+  <xacro:property name="caster_radius" value="0.02" />
+  <xacro:property name="caster_offset_x" value="0.12" />
+  <xacro:property name="caster_mass" value="0.2" />
+
+  <!-- Lidar mount offsets -->
+  <!-- Placed near the front edge of the robot and elevated on a mast or shelf -->
+  <xacro:property name="lidar_offset_x" value="0.24" />
+  <xacro:property name="lidar_offset_y" value="0.0" />
+  <xacro:property name="lidar_offset_z" value="0.25" />
+  <xacro:property name="lidar_mass" value="0.12" />
+
+  <!-- ==================================================================== -->
+  <!-- MATERIALS (Colors for visualization in RViz)                         -->
+  <!-- ==================================================================== -->
+  <material name="chassis_material">
+    <color rgba="0.85 0.85 0.90 1.0" /> <!-- Premium Ice White -->
+  </material>
+
+  <material name="wheel_material">
+    <color rgba="0.15 0.15 0.15 1.0" /> <!-- Sleek Dark Grey -->
+  </material>
+
+  <material name="caster_material">
+    <color rgba="0.4 0.4 0.4 1.0" /> <!-- Matte Grey -->
+  </material>
+
+  <material name="lidar_material">
+    <color rgba="0.1 0.3 0.6 1.0" /> <!-- Antigravity Deep Blue -->
+  </material>
+
+  <!-- ==================================================================== -->
+  <!-- MACROS (Inertial Helper Functions)                                   -->
+  <!-- ==================================================================== -->
+  <xacro:macro name="cylinder_inertia" params="mass r h">
+    <inertial>
+      <mass value="${mass}" />
+      <inertia ixx="${(1/12) * mass * (3*r*r + h*h)}" ixy="0.0" ixz="0.0"
+               iyy="${(1/12) * mass * (3*r*r + h*h)}" iyz="0.0"
+               izz="${(1/2) * mass * (r*r)}" />
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="sphere_inertia" params="mass r">
+    <inertial>
+      <mass value="${mass}" />
+      <inertia ixx="${(2/5) * mass * r*r}" ixy="0.0" ixz="0.0"
+               iyy="${(2/5) * mass * r*r}" iyz="0.0"
+               izz="${(2/5) * mass * r*r}" />
+    </inertial>
+  </xacro:macro>
+
+  <!-- ==================================================================== -->
+  <!-- LINKS & JOINTS                                                       -->
+  <!-- ==================================================================== -->
+
+  <!-- 1. base_footprint (Ground projection) -->
+  <link name="base_footprint" />
+
+  <!-- 2. base_link (Robot origin at center of the wheel axle) -->
+  <link name="base_link">
+    <!-- Visual hub for base_link -->
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.04" length="0.01" />
+      </geometry>
+      <material name="caster_material"/>
+    </visual>
+  </link>
+
+  <joint name="base_footprint_joint" type="fixed">
+    <parent link="base_link" />
+    <child link="base_footprint" />
+    <!-- Elevate base_link relative to base_footprint (so footprint is on ground) -->
+    <origin xyz="0 0 -${wheel_radius}" rpy="0 0 0" />
+  </joint>
+
+  <!-- 3. Chassis (Main tall cylindrical body) -->
+  <link name="chassis">
+    <visual>
+      <!-- Center visual half height up -->
+      <origin xyz="0 0 ${chassis_height/2}" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="${chassis_radius}" length="${chassis_height}" />
+      </geometry>
+      <material name="chassis_material" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 ${chassis_height/2}" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="${chassis_radius}" length="${chassis_height}" />
+      </geometry>
+    </collision>
+    <xacro:cylinder_inertia mass="${chassis_mass}" r="${chassis_radius}" h="${chassis_height}" />
+  </link>
+
+  <joint name="chassis_joint" type="fixed">
+    <parent link="base_link" />
+    <child link="chassis" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+
+  <!-- 4. Left Wheel -->
+  <link name="left_wheel">
+    <visual>
+      <!-- Wheels are cylinders, which are oriented along the Z axis by default in ROS.
+           We rotate the visual/collision shapes by 90 degrees around X to align with Y axis -->
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0" />
+      <geometry>
+        <cylinder radius="${wheel_radius}" length="${wheel_width}" />
+      </geometry>
+      <material name="wheel_material" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0" />
+      <geometry>
+        <cylinder radius="${wheel_radius}" length="${wheel_width}" />
+      </geometry>
+    </collision>
+    <xacro:cylinder_inertia mass="${wheel_mass}" r="${wheel_radius}" h="${wheel_width}" />
+  </link>
+
+  <joint name="left_wheel_joint" type="fixed">
+    <parent link="base_link" />
+    <child link="left_wheel" />
+    <!-- Positioned at wheelbase/2 along positive Y-axis -->
+    <origin xyz="0 ${wheelbase/2} 0" rpy="0 0 0" />
+  </joint>
+
+  <!-- 5. Right Wheel -->
+  <link name="right_wheel">
+    <visual>
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0" />
+      <geometry>
+        <cylinder radius="${wheel_radius}" length="${wheel_width}" />
+      </geometry>
+      <material name="wheel_material" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0" />
+      <geometry>
+        <cylinder radius="${wheel_radius}" length="${wheel_width}" />
+      </geometry>
+    </collision>
+    <xacro:cylinder_inertia mass="${wheel_mass}" r="${wheel_radius}" h="${wheel_width}" />
+  </link>
+
+  <joint name="right_wheel_joint" type="fixed">
+    <parent link="base_link" />
+    <child link="right_wheel" />
+    <!-- Positioned at wheelbase/2 along negative Y-axis -->
+    <origin xyz="0 -${wheelbase/2} 0" rpy="0 0 0" />
+  </joint>
+
+  <!-- 6. Front Caster Wheel -->
+  <link name="front_caster">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <sphere radius="${caster_radius}" />
+      </geometry>
+      <material name="caster_material" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <sphere radius="${caster_radius}" />
+      </geometry>
+    </collision>
+    <xacro:sphere_inertia mass="${caster_mass}" r="${caster_radius}" />
+  </link>
+
+  <joint name="front_caster_joint" type="fixed">
+    <parent link="base_link" />
+    <child link="front_caster" />
+    <!-- Offset forward and down so it meets ground height -->
+    <origin xyz="${caster_offset_x} 0 ${-(wheel_radius - caster_radius)}" rpy="0 0 0" />
+  </joint>
+
+  <!-- 7. Back Caster Wheel -->
+  <link name="back_caster">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <sphere radius="${caster_radius}" />
+      </geometry>
+      <material name="caster_material" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <sphere radius="${caster_radius}" />
+      </geometry>
+    </collision>
+    <xacro:sphere_inertia mass="${caster_mass}" r="${caster_radius}" />
+  </link>
+
+  <joint name="back_caster_joint" type="fixed">
+    <parent link="base_link" />
+    <child link="back_caster" />
+    <!-- Offset backward and down so it meets ground height -->
+    <origin xyz="-${caster_offset_x} 0 ${-(wheel_radius - caster_radius)}" rpy="0 0 0" />
+  </joint>
+
+  <!-- 8. Lidar Sensor (frame_id = laser) -->
+  <link name="laser">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <!-- Standard puck cylinder shape for RPLidar A1/A2 -->
+        <cylinder radius="0.035" length="0.04" />
+      </geometry>
+      <material name="lidar_material" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.035" length="0.04" />
+      </geometry>
+    </collision>
+    <xacro:cylinder_inertia mass="${lidar_mass}" r="0.035" h="0.04" />
+  </link>
+
+  <joint name="laser_joint" type="fixed">
+    <parent link="base_link" />
+    <child link="laser" />
+    <origin xyz="${lidar_offset_x} ${lidar_offset_y} ${lidar_offset_z}" rpy="0 0 0" />
+  </joint>
+
+</robot>

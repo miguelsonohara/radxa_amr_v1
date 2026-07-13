@@ -1,0 +1,242 @@
+slam_toolbox:
+  ros__parameters:
+
+    # ==========================================================================
+    # 1. Plugin and Solver Settings
+    # ==========================================================================
+    
+    # Solver plugin used to optimize the pose graph.
+    # Options: solver_plugins::CeresSolver (recommended, robust, and fast).
+    solver_plugin: solver_plugins::CeresSolver
+    
+    # Linear solver type inside Ceres. 
+    # SPARSE_NORMAL_CHOLESKY is ideal for sparse pose-graph optimization.
+    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
+    
+    # Preconditioner used to speed up the solver's convergence.
+    # SCHUR_JACOBI works well with sparse structures.
+    ceres_preconditioner: SCHUR_JACOBI
+    
+    # Trust region step strategy. 
+    # LEVENBERG_MARQUARDT is standard for non-linear least squares optimization.
+    ceres_trust_strategy: LEVENBERG_MARQUARDT
+    
+    # Dogleg step strategy. Options: TRADITIONAL_DOGLEG or SUBSPACE_DOGLEG.
+    ceres_dogleg_type: TRADITIONAL_DOGLEG
+    
+    # Loss function to reduce the impact of outlier measurements (e.g. bad scan matches).
+    # Options: None, HuberLoss, CauchyLoss. Using None trusts scan matches unless noisy.
+    ceres_loss_function: None
+
+
+    # ==========================================================================
+    # 2. ROS Frame and Topic Configurations
+    # ==========================================================================
+    
+    # The coordinate frame representing the origin of the odometry system.
+    # Set to 'odom' to match the ESP32's micro-ROS published odometry frame.
+    odom_frame: odom
+    
+    # The coordinate frame representing the static map origin.
+    # SLAM Toolbox will publish the transform map -> odom.
+    map_frame: map
+    
+    # The coordinate frame representing the base footprint of the robot.
+    # Set to 'base_link' to align directly with the ESP32's tracking child link.
+    # Adjust this if your TF tree uses 'base_footprint' as the primary child.
+    base_frame: base_link
+    
+    # The topic on which the LiDAR node publishes laser scans.
+    # Set to '/scan' to listen to the sllidar_ros2 output.
+    scan_topic: /scan
+    
+    # If true, enables the map saver service inside SLAM Toolbox, allowing
+    # you to save the generated occupancy grid dynamically using the map_server.
+    use_map_saver: true
+    
+    # SLAM operation mode. 
+    # Options: mapping (build a map from scratch) or localization (localize in a loaded map).
+    mode: localization
+    map_file_name: /home/radxa/receptionist_robot_ws/map/test_map_1
+    map_start_pose: [0.0, 0.0, 0.0]
+    map_start_at_dock: false
+
+    # ==========================================================================
+    # 3. Scan Matching & SLAM General Parameters
+    # ==========================================================================
+    
+    # Enable/disable using laser scans to correct odometry drift.
+    # Keep true for SLAM, set to false only if you want pure dead-reckoning (not recommended).
+    use_scan_matching: true
+    
+    # Use the center of gravity of the scan points instead of the sensor origin
+    # to compute transforms. Improves stability when laser is offset.
+    use_scan_barycenter: true
+    
+    # Minimum distance (meters) the robot must move before processing a new scan.
+    # Tuning: Increase (e.g., 0.8) to reduce CPU load; decrease (e.g., 0.1) for high-density mapping
+    # in narrow corridors or slow-moving platforms.
+    minimum_travel_distance: 0.1
+    
+    # Minimum heading change (radians) the robot must rotate before processing a new scan.
+    # Tuning: Decrease (e.g., 0.15) if the robot turns in place quickly and loses localization.
+    minimum_travel_heading: 0.08
+    
+    # If true, both distance AND heading threshold must be met to process a scan.
+    # If false, either threshold being met triggers a scan update (default, safer).
+    check_min_dist_and_heading_precisely: false
+    
+    # Number of scans to buffer in memory for loop closure and optimization.
+    # Tuning: Lower values save memory/CPU on low-resource hosts like Radxa;
+    # higher values (e.g., 20) improve map consistency at the cost of computing resources.
+    scan_buffer_size: 15
+    
+    # Maximum distance (meters) between scans to consider them for matching.
+    # Scans further than this will not be linked in the pose graph.
+    scan_buffer_maximum_scan_distance: 10.0
+    
+    # Minimum match response value for fine scan matching.
+    # Tuning: Higher values (e.g. 0.2) force strict matches (less map distortion but may fail
+    # in featureless halls); lower values allow weaker matches (e.g. 0.05).
+    link_match_minimum_response_fine: 0.1  
+    
+    # Maximum distance (meters) to search for scan matching links.
+    # Tuning: Set to maximum expected distance between sequential scans.
+    link_scan_maximum_distance: 1.5
+    
+    # Maximum distance (meters) to look for loop closures around the current pose.
+    # Tuning: Increase to close larger loops; decrease to limit CPU spikes when returning
+    # to known areas.
+    loop_search_maximum_distance: 3.0
+    
+    # If true, enables loop closure detection and optimization.
+    # Tuning: Crucial for mapping large areas to correct accumulated odometry drift.
+    do_loop_closing: true 
+    
+    # Minimum number of sequential scans in a chain to trigger loop closing.
+    # Tuning: Prevents false loop closures from transient obstacles.
+    loop_match_minimum_chain_size: 10           
+    
+    # Maximum variance allowed for coarse loop closing matches.
+    # Tuning: Lower values restrict loop closures to high-confidence alignments.
+    loop_match_maximum_variance_coarse: 3.0  
+    
+    # Minimum match response value for coarse loop closing search.
+    loop_match_minimum_response_coarse: 0.35    
+    
+    # Minimum match response value for fine loop closing optimization.
+    loop_match_minimum_response_fine: 0.45
+
+
+    # ==========================================================================
+    # 4. Correlation Search Settings (Map Matching Grid)
+    # ==========================================================================
+    
+    # Size of the search window (meters) for finding correlation matches.
+    # Tuning: Larger values handle high linear speeds and poor odometry but increase CPU usage.
+    correlation_search_space_dimension: 0.5
+    
+    # Resolution (meters per cell) of the search grid.
+    # Tuning: Smaller values (e.g., 0.01) increase accuracy; larger values speed up matching.
+    correlation_search_space_resolution: 0.01
+    
+    # Standard deviation (meters) to smear/smooth scan matching cost values.
+    # Tuning: Prevents local minima traps by smoothing the search space.
+    correlation_search_space_smear_deviation: 0.1 
+
+    # Size of the loop closure search window (meters).
+    # Tuning: Larger values search a wider area when the robot returns to an old position,
+    # helping recover from significant odometry drift, but increases CPU usage.
+    loop_search_space_dimension: 8.0
+    
+    # Resolution (meters per cell) of the loop closure search grid.
+    loop_search_space_resolution: 0.05
+    
+    # Standard deviation (meters) to smear loop closure cost values.
+    loop_search_space_smear_deviation: 0.03
+
+
+    # ==========================================================================
+    # 5. Scan Matcher Penalties (Restricts unrealistic updates)
+    # ==========================================================================
+    
+    # Penalty weight applied to translation updates that deviate from odometry.
+    # Tuning: Increase (e.g., 0.8) to trust your ESP32 odometry more; decrease to trust LiDAR matches more.
+    distance_variance_penalty: 0.1      
+    
+    # Penalty weight applied to rotation updates that deviate from odometry.
+    # Tuning: Increase if your robot rotates smoothly and you want to prevent LiDAR sliding on walls.
+    angle_variance_penalty: 0.1    
+
+    # Angular search range offset (radians) for fine matching.
+    fine_search_angle_offset: 0.00349     
+    
+    # Angular search range offset (radians) for coarse matching.
+    coarse_search_angle_offset: 0.698
+    
+    # Angular resolution (radians) for coarse matching grid.
+    coarse_angle_resolution: 0.0349        
+    
+    # Minimum score penalty for orientation deviations.
+    minimum_angle_penalty: 0.9
+    
+    # Minimum score penalty for translation deviations.
+    minimum_distance_penalty: 0.5
+    
+    # Expand search windows if matching scores are low.
+    use_response_expansion: true
+
+
+    # ==========================================================================
+    # 6. Map Generation and Rendering Parameters
+    # ==========================================================================
+    
+    # Debug logging level. Set true to output detailed solver information.
+    debug_logging: false
+    
+    # Rate at which to process incoming scans. 1 means process every scan,
+    # 2 means process every second scan, etc.
+    # Tuning: Increase to 2 or 3 to reduce CPU utilization on the Radxa.
+    throttle_scans: 1
+    
+    # Frequency (seconds) at which to publish the map-to-odom transform.
+    # Tuning: 0.02 (50Hz) provides smooth transforms for navigation. Set to 0 to disable publishing.
+    transform_publish_period: 0.02
+    
+    # Interval (seconds) at which the occupancy grid map is updated and published to /map.
+    # Tuning: Increase (e.g., 5.0) to save CPU; decrease (e.g., 1.0) for rapid map updates in RViz.
+    map_update_interval: 2.0
+    
+    # Spatial resolution (meters per cell) of the generated map.
+    # Tuning: 0.05 (5cm) is standard for Nav2. Decreasing (e.g. 0.02) increases detail but uses more memory.
+    resolution: 0.05
+    
+    # Re-apply scan timestamps before publishing transforms to keep time synchronized.
+    restamp_tf: true
+    
+    # Minimum range (meters) of lidar points to use for drawing the map.
+    # Tuning: Increase to ignore reflections from parts of the robot chassis.
+    min_laser_range: 0.15
+    
+    # Maximum range (meters) of lidar points to use for drawing the map.
+    # Tuning: Reduce (e.g. 12.0) to ignore noisy long-range readings from the RPLidar.
+    max_laser_range: 10.0
+    
+    # Minimum time (seconds) between processing successive scan updates.
+    minimum_time_interval: 0.1
+    
+    # Timeout duration (seconds) when waiting for transforms.
+    transform_timeout: 0.2
+    
+    # Duration (seconds) of the TF buffer. Keep high enough to cover latency.
+    tf_buffer_duration: 10.0
+    
+    # Stack size (bytes) allocated for the serialization threads.
+    # Must be large to serialize high-resolution maps without segmentation faults.
+    stack_size_to_use: 40000000
+    
+    # Enables interactive mode in RViz, allowing users to move map nodes manually.
+    enable_interactive_mode: true
+    
+    # Minimum hit probability threshold to mark a cell as occupied.
+    occupancy_threshold: 0.1

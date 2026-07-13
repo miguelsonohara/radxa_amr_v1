@@ -1,0 +1,33 @@
+[0.029s] Invoking command in '/home/radxa/receptionist_robot_ws/build/receptionist_robot_description': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake /home/radxa/receptionist_robot_ws/src/receptionist_robot_description -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/radxa/receptionist_robot_ws/install/receptionist_robot_description
+[0.065s] -- Found ament_cmake: 2.5.6 (/opt/ros/jazzy/share/ament_cmake/cmake)
+[0.434s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[0.481s] -- Found ament_lint_auto: 0.17.5 (/opt/ros/jazzy/share/ament_lint_auto/cmake)
+[0.688s] -- Added test 'lint_cmake' to check CMake code style
+[0.694s] -- Added test 'xmllint' to check XML markup files
+[0.705s] -- Configuring done (0.6s)
+[0.734s] -- Generating done (0.0s)
+[0.740s] -- Build files have been written to: /home/radxa/receptionist_robot_ws/build/receptionist_robot_description
+[0.752s] Invoked command in '/home/radxa/receptionist_robot_ws/build/receptionist_robot_description' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake /home/radxa/receptionist_robot_ws/src/receptionist_robot_description -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/radxa/receptionist_robot_ws/install/receptionist_robot_description
+[0.755s] Invoking command in '/home/radxa/receptionist_robot_ws/build/receptionist_robot_description': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --build /home/radxa/receptionist_robot_ws/build/receptionist_robot_description -- -j8 -l8
+[0.819s] Invoked command in '/home/radxa/receptionist_robot_ws/build/receptionist_robot_description' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --build /home/radxa/receptionist_robot_ws/build/receptionist_robot_description -- -j8 -l8
+[0.825s] Invoking command in '/home/radxa/receptionist_robot_ws/build/receptionist_robot_description': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --install /home/radxa/receptionist_robot_ws/build/receptionist_robot_description
+[0.837s] -- Install configuration: ""
+[0.839s] -- Execute custom install script
+[0.840s] -- Up-to-date symlink: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/urdf/receptionist_robot.urdf.xacro
+[0.841s] -- Up-to-date symlink: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/rviz/receptionist_robot.rviz
+[0.842s] -- Up-to-date symlink: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/ament_index/resource_index/package_run_dependencies/receptionist_robot_description
+[0.842s] -- Up-to-date symlink: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/ament_index/resource_index/parent_prefix_path/receptionist_robot_description
+[0.843s] -- Up-to-date symlink: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/environment/ament_prefix_path.sh
+[0.844s] -- Up-to-date symlink: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/environment/ament_prefix_path.dsv
+[0.845s] -- Up-to-date symlink: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/environment/path.sh
+[0.846s] -- Up-to-date symlink: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/environment/path.dsv
+[0.847s] -- Up-to-date symlink: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/local_setup.bash
+[0.848s] -- Up-to-date symlink: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/local_setup.sh
+[0.848s] -- Up-to-date symlink: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/local_setup.zsh
+[0.849s] -- Up-to-date symlink: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/local_setup.dsv
+[0.850s] -- Symlinking: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/package.dsv
+[0.852s] -- Up-to-date symlink: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/ament_index/resource_index/packages/receptionist_robot_description
+[0.853s] -- Up-to-date symlink: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/cmake/receptionist_robot_descriptionConfig.cmake
+[0.854s] -- Up-to-date symlink: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/cmake/receptionist_robot_descriptionConfig-version.cmake
+[0.855s] -- Up-to-date symlink: /home/radxa/receptionist_robot_ws/install/receptionist_robot_description/share/receptionist_robot_description/package.xml
+[0.859s] Invoked command in '/home/radxa/receptionist_robot_ws/build/receptionist_robot_description' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/radxa/turtlebot3_ws/install/turtlebot3_teleop:/home/radxa/turtlebot3_ws/install/turtlebot3_example:/opt/ros/jazzy /usr/bin/cmake --install /home/radxa/receptionist_robot_ws/build/receptionist_robot_description

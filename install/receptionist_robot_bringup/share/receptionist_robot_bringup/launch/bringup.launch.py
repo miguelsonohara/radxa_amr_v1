@@ -1,0 +1,1 @@
+/home/radxa/receptionist_robot_ws/src/receptionist_robot_bringup/launch/bringup.launch.py
