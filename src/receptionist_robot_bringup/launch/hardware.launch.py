@@ -6,7 +6,8 @@ Author: Senior Robotics Engineer
 
 This launch file starts:
 1. Micro-ROS Agent: Communicates with ESP32 (shares /odom, /tf, and receives /cmd_vel).
-2. Lidar Node (sllidar_ros2): Pulls scan points from RPLidar and publishes to /scan.
+# 2. Lidar Node (sllidar_ros2): Pulls scan points from RPLidar and publishes to /scan.
+# 2. Lidar Node (hclidar_driver_ros2): Pulls scan points from HCLiDAR and publishes to /scan.
 3. Robot State Publisher: Parses Xacro URDF and publishes static transforms.
 """
 
@@ -49,13 +50,24 @@ def generate_launch_description():
     declare_lidar_port = DeclareLaunchArgument(
         'lidar_port',
         default_value='/dev/ttyUSB0',
-        description='Serial port for the RPLidar sensor'
+        description='Serial port for the LiDAR sensor'
     )
 
+    # declare_lidar_baudrate = DeclareLaunchArgument(
+    #     'lidar_baudrate',
+    #     default_value='460800',
+    #     description='Baudrate for RPLidar'
+    # )
     declare_lidar_baudrate = DeclareLaunchArgument(
         'lidar_baudrate',
-        default_value='460800',
-        description='Baudrate for RPLidar'
+        default_value='115200',
+        description='Baudrate for HCLiDAR'
+    )
+
+    declare_lidar_model = DeclareLaunchArgument(
+        'lidar_model',
+        default_value='X2M',
+        description='Model of the HCLiDAR sensor (e.g. X1, X2M)'
     )
 
     # 3. Node Declarations
@@ -67,17 +79,34 @@ def generate_launch_description():
         output='screen'
     )
 
+    # lidar_node = Node(
+    #     package='sllidar_ros2',
+    #     executable='sllidar_node',
+    #     name='sllidar_node',
+    #     parameters=[{
+    #         'channel_type': 'serial',
+    #         'serial_port': LaunchConfiguration('lidar_port'),
+    #         'serial_baudrate': LaunchConfiguration('lidar_baudrate'),
+    #         'frame_id': 'laser',
+    #         'inverted': False,
+    #         'angle_compensate': True
+    #     }],
+    #     output='screen'
+    # )
+    # lidar_node = Node(
+    #     package='hclidar_driver_ros2',
+    #     executable='hclidar_driver_node',
+    #     name='hclidar_driver_node'
+    # )
     lidar_node = Node(
-        package='sllidar_ros2',
-        executable='sllidar_node',
-        name='sllidar_node',
+        package='hclidar_driver_ros2',
+        executable='hclidar_driver_ros2_node',
+        name='hclidar_driver_ros2_node',
         parameters=[{
-            'channel_type': 'serial',
-            'serial_port': LaunchConfiguration('lidar_port'),
-            'serial_baudrate': LaunchConfiguration('lidar_baudrate'),
+            'port': LaunchConfiguration('lidar_port'),
+            'baudrate': LaunchConfiguration('lidar_baudrate'),
+            'lidar_model': LaunchConfiguration('lidar_model'),
             'frame_id': 'laser',
-            'inverted': False,
-            'angle_compensate': True
         }],
         output='screen'
     )
@@ -101,6 +130,7 @@ def generate_launch_description():
     ld.add_action(declare_serial_baudrate)
     ld.add_action(declare_lidar_port)
     ld.add_action(declare_lidar_baudrate)
+    ld.add_action(declare_lidar_model)
     
     ld.add_action(micro_ros_agent_node)
     ld.add_action(lidar_node)

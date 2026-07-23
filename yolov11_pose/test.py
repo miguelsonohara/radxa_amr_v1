@@ -1,0 +1,44 @@
+# ---------------------------------------------------------------------
+# Copyright (c) 2025 Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause
+# ---------------------------------------------------------------------
+
+
+import numpy as np
+
+from qai_hub_models.models.yolov11_pose.app import YoloV11PoseApp
+from qai_hub_models.models.yolov11_pose.demo import IMAGE_ADDRESS
+from qai_hub_models.models.yolov11_pose.demo import main as demo_main
+from qai_hub_models.models.yolov11_pose.model import (
+    MODEL_ASSET_VERSION,
+    MODEL_ID,
+    YoloV11PoseDetector,
+)
+from qai_hub_models.utils.asset_loaders import CachedWebModelAsset, load_image
+from qai_hub_models.utils.test_helpers import (
+    assert_most_close,
+)
+
+OUTPUT_IMAGE_ADDRESS = CachedWebModelAsset.from_asset_store(
+    MODEL_ID, MODEL_ASSET_VERSION, "yolov11_pose_demo_output.png"
+)
+
+
+def test_task() -> None:
+    image = load_image(IMAGE_ADDRESS)
+    model = YoloV11PoseDetector.from_pretrained()
+    app = YoloV11PoseApp(model=model)
+    output = app.predict(image)[0]
+
+    output_image = load_image(OUTPUT_IMAGE_ADDRESS)
+    assert_most_close(
+        np.asarray(output, dtype=np.float32) / 255,
+        np.asarray(output_image, dtype=np.float32) / 255,
+        0.005,
+        rtol=0.02,
+        atol=0.2,
+    )
+
+
+def test_demo() -> None:
+    demo_main(is_test=True)

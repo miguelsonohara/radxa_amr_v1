@@ -157,3 +157,82 @@ Alternatively, you can run SLAM Toolbox in localization mode to continuously loc
    ros2 launch receptionist_robot_bringup bringup.launch.py
    ```
 4. Nav2 will consume the map and TF updates dynamically published by SLAM Toolbox in localization mode.
+
+---
+
+
+### 3. Running the YOLOv11 Pose & Sensor Fusion Navigation Pipeline
+
+We have upgraded the `yolov11_pose_detector` package into an advanced **Detection & Sensor Fusion Navigation** node. It tracks a user (even with an obstructed lower body), filters and stabilizes target coordinates using 2D LiDAR range gating, projects coordinates to the map frame, and dispatches Nav2 goal poses via raising a wrist gesture.
+
+#### A. Start Camera Driver
+Start a camera driver node publishing raw images to `/image_raw` (e.g., using `usb_cam`):
+```bash
+ros2 run usb_cam usb_cam_node_exe --ros-args -p video_device:=/dev/video0 -p brightness:=150
+```
+
+#### B. Start YOLOv11 Pose & Sensor Fusion Node
+Open a new terminal, source the workspace, and launch the detector node.
+
+* **Standard Launch (Uses defaults)**:
+  ```bash
+  source ~/receptionist_robot_ws/install/setup.bash
+  ros2 run yolov11_pose_detector pose_detector_node
+  ```
+
+* **Advanced Configuration (Custom Parameters)**:
+  ```bash
+  ros2 run yolov11_pose_detector pose_detector_node --ros-args \
+    -p input_topic:=/image_raw \
+    -p output_topic:=/yolov11_pose/debug_image \
+    -p model_name:=yolo11n-pose.onnx \
+    -p conf_threshold:=0.4 \
+    -p safety_distance:=1.0 \
+    -p camera_frame_id:=camera_color_optical_frame \
+    -p camera_mount_x:=0.18 \
+    -p camera_mount_z:=0.50 \
+    -p camera_laser_yaw_offset:=0.0
+  ```
+
+#### C. Configuration Parameters
+| Parameter | Default Value | Description |
+| :--- | :--- | :--- |
+| `input_topic` | `/image_raw` | Input camera topic. |
+| `output_topic` | `/yolov11_pose/debug_image` | Output visualization topic (rqt / debug). |
+| `model_name` | `yolo11n-pose.onnx` | Model filename (automatically promoted to ONNX on CPU). |
+| `conf_threshold` | `0.4` | Bounding box / pose confidence threshold. |
+| `focal_length_x` / `_y` | `550.0` / `550.0` | Camera focal length parameters (fallback if `/camera/camera_info` is offline). |
+| `center_x` / `_y` | `320.0` / `240.0` | Camera principal point calibration parameters. |
+| `safety_distance` | `1.0` | Safe distance (meters) the robot maintains from the target when stopping. |
+| `camera_mount_x` / `_y` / `_z` | `0.18` / `0.0` / `0.50` | Camera mount offset relative to `base_link` (used as fallback when camera TF is offline). |
+| `camera_laser_yaw_offset` | `0.0` | Mounting angular offset between camera center and LiDAR scan ($0.0 = \text{aligned}$). |
+
+---
+
+### 4. Interactive HUD, Sensor Fusion & Gesture Triggers
+
+1. **View Visual Overlay**: Run `rqt_image_view` to visualize the `/yolov11_pose/debug_image` stream.
+2. **Interactive HUD Panel**: The top-left corner displays active system diagnostics:
+   - **Engine**: Confirms execution provider (e.g., `ONNX Runtime (CPU-4T)`).
+   - **Range**: Approximated target distance. Shows `LiDAR Fused` if matching laser returns are found, or `Mono Est` (biacromial camera projection) if the lower body/LiDAR path is occluded.
+   - **Gesture**: Shows `WAITING` or a neon-green `TRIGGERED` status.
+   - **Nav Status**: Displays Nav2 Action feedback (`IDLE`, `PLANNING`, `EXECUTING`, `ARRIVED`, `FAILED`).
+3. **Triggering Navigation (Follow-Me)**:
+   - Stand in front of the robot.
+   - Raise either your **left or right wrist above your head** ($y_{wrist} < y_{nose}$).
+   - The HUD will display **`Gesture: TRIGGERED`**, compute the safety offset position, and dispatch the goal to the Nav2 Action Server. The robot will autonomously plan and drive to stop exactly $1.0\text{ m}$ directly in front of and facing you.
+   - *Goal Cooldown*: A 6-second cooldown protects the navigation stack from being spammed with goal queries.
+
+---
+
+### 5. Build Workspace
+To compile or sync changes:
+```bash
+colcon build --symlink-install
+source install/setup.bash
+```
+
+
+---
+
+

@@ -6,7 +6,8 @@ Author: Senior Robotics Engineer
 
 This launch file starts:
 1. Micro-ROS Agent: Communicates with ESP32 (shares /odom, /tf, and receives /cmd_vel).
-2. Lidar Node (sllidar_ros2): Pulls scan points from RPLidar and publishes to /scan.
+# 2. Lidar Node (sllidar_ros2): Pulls scan points from RPLidar and publishes to /scan.
+# 2. Lidar Node (hclidar_driver_ros2): Pulls scan points from HCLiDAR and publishes to /scan.
 3. Robot State Publisher: Parses Xacro URDF and publishes static transforms.
 4. SLAM Toolbox: Builds map dynamically and publishes map->odom transform.
 5. Nav2 Stack: Standard path planning and local control, utilizing custom costmaps.
@@ -71,20 +72,30 @@ def generate_launch_description():
         description='Baudrate of the micro-ROS Agent connection (e.g. 115200 or 921600)'
     )
 
-    # Lidar Serial Port: The interface where RPLidar is plugged in.
+    # Lidar Serial Port: The interface where LiDAR is plugged in.
     # Usually '/dev/ttyUSB0'.
     declare_lidar_port = DeclareLaunchArgument(
         'lidar_port',
         default_value='/dev/ttyUSB0',
-        description='Serial port for the RPLidar sensor'
+        description='Serial port for the LiDAR sensor'
     )
 
-    # Lidar Baudrate: Speed of communication with RPLidar.
-    # 115200 is standard for RPLidar A1/A2. RPLidar A3 or S1 may require 256000.
+    # Lidar Baudrate: Speed of communication with LiDAR.
+    # # declare_lidar_baudrate = DeclareLaunchArgument(
+    # #     'lidar_baudrate',
+    # #     default_value='460800',
+    # #     description='Baudrate for RPLidar (typically 115200 for A1/A2, 256000 for A3)'
+    # # )
     declare_lidar_baudrate = DeclareLaunchArgument(
         'lidar_baudrate',
-        default_value='460800',
-        description='Baudrate for RPLidar (typically 115200 for A1/A2, 256000 for A3)'
+        default_value='115200',
+        description='Baudrate for HCLiDAR (typically 115200)'
+    )
+
+    declare_lidar_model = DeclareLaunchArgument(
+        'lidar_model',
+        default_value='X2M',
+        description='Model of the HCLiDAR sensor (e.g. X1, X2M)'
     )
 
     # --------------------------------------------------------------------------
@@ -102,20 +113,30 @@ def generate_launch_description():
         output='screen'
     )
 
-    # B. Lidar Node (sllidar_ros2)
-    # Starts the lidar driver, publishing `/scan` topic in frame `laser`.
-    # Make sure frame_id matches the one defined in the URDF Xacro.
+    # B. Lidar Node (sllidar_ros2 vs hclidar_driver_ros2)
+    # # lidar_node = Node(
+    # #     package='sllidar_ros2',
+    # #     executable='sllidar_node',
+    # #     name='sllidar_node',
+    # #     parameters=[{
+    # #         'channel_type': 'serial',
+    # #         'serial_port': LaunchConfiguration('lidar_port'),
+    # #         'serial_baudrate': LaunchConfiguration('lidar_baudrate'),
+    # #         'frame_id': 'laser',  # Must match the link name in URDF
+    # #         'inverted': False,    # True to mirror scans if mounted upside down
+    # #         'angle_compensate': True
+    # #     }],
+    # #     output='screen'
+    # # )
     lidar_node = Node(
-        package='sllidar_ros2',
-        executable='sllidar_node',
-        name='sllidar_node',
+        package='hclidar_driver_ros2',
+        executable='hclidar_driver_ros2_node',
+        name='hclidar_driver_ros2_node',
         parameters=[{
-            'channel_type': 'serial',
-            'serial_port': LaunchConfiguration('lidar_port'),
-            'serial_baudrate': LaunchConfiguration('lidar_baudrate'),
+            'port': LaunchConfiguration('lidar_port'),
+            'baudrate': LaunchConfiguration('lidar_baudrate'),
+            'lidar_model': LaunchConfiguration('lidar_model'),
             'frame_id': 'laser',  # Must match the link name in URDF
-            'inverted': False,    # True to mirror scans if mounted upside down
-            'angle_compensate': True
         }],
         output='screen'
     )
@@ -173,6 +194,7 @@ def generate_launch_description():
     ld.add_action(declare_serial_baudrate)
     ld.add_action(declare_lidar_port)
     ld.add_action(declare_lidar_baudrate)
+    ld.add_action(declare_lidar_model)
     
     # Add Nodes
     ld.add_action(micro_ros_agent_node)

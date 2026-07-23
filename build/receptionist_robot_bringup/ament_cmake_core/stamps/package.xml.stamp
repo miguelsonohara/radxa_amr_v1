@@ -10,7 +10,8 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <exec_depend>receptionist_robot_description</exec_depend>
-  <exec_depend>sllidar_ros2</exec_depend>
+  <!-- <exec_depend>sllidar_ros2</exec_depend> -->
+  <exec_depend>hclidar_driver_ros2</exec_depend>
   <exec_depend>micro_ros_agent</exec_depend>
   <exec_depend>slam_toolbox</exec_depend>
   <exec_depend>nav2_bringup</exec_depend>
