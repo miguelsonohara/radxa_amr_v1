@@ -32,10 +32,10 @@
 
   <!-- Lidar mount offsets -->
   <!-- Placed near the front edge of the robot and elevated on a mast or shelf -->
-  <xacro:property name="lidar_offset_x" value="0.24" />
+  <xacro:property name="lidar_offset_x" value="0.0" />
   <xacro:property name="lidar_offset_y" value="0.0" />
   <xacro:property name="lidar_offset_z" value="0.25" />
-  <xacro:property name="lidar_mass" value="0.12" />
+  <xacro:property name="lidar_mass" value="0.25" />
 
   <!-- ==================================================================== -->
   <!-- MATERIALS (Colors for visualization in RViz)                         -->

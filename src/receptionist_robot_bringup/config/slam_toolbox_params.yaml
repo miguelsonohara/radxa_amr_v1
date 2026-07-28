@@ -57,6 +57,9 @@ slam_toolbox:
     # Options: mapping (build a map from scratch) or localization (localize in a loaded map).
     mode: localization
     map_file_name: /home/radxa/receptionist_robot_ws/map/test_map_2
+
+    # mode: mapping
+
     map_start_pose: [0.0, 0.0, 0.0]
     map_start_at_dock: false
 
@@ -132,7 +135,7 @@ slam_toolbox:
 
     # Size of the search window (meters) for finding correlation matches.
     # Tuning: Larger values handle high linear speeds and poor odometry but increase CPU usage.
-    correlation_search_space_dimension: 0.5
+    correlation_search_space_dimension: 0.8
 
     # Resolution (meters per cell) of the search grid.
     # Tuning: Smaller values (e.g., 0.01) increase accuracy; larger values speed up matching.
@@ -159,11 +162,11 @@ slam_toolbox:
 
     # Penalty weight applied to translation updates that deviate from odometry.
     # Tuning: Increase (e.g., 0.8) to trust your ESP32 odometry more; decrease to trust LiDAR matches more.
-    distance_variance_penalty: 0.1
+    distance_variance_penalty: 0.3
 
     # Penalty weight applied to rotation updates that deviate from odometry.
     # Tuning: Increase if your robot rotates smoothly and you want to prevent LiDAR sliding on walls.
-    angle_variance_penalty: 0.1
+    angle_variance_penalty: 0.3
 
     # Angular search range offset (radians) for fine matching.
     fine_search_angle_offset: 0.00349
@@ -211,8 +214,8 @@ slam_toolbox:
     restamp_tf: true
 
     # Minimum range (meters) of lidar points to use for drawing the map.
-    # Tuning: Increase to ignore reflections from parts of the robot chassis.
-    min_laser_range: 0.15
+    # Tuning: Set to 0.28m to ignore reflections from internal chassis poles inside the robot radius.
+    min_laser_range: 0.28
 
     # Maximum range (meters) of lidar points to use for drawing the map.
     # Tuning: Reduce (e.g. 12.0) to ignore noisy long-range readings from the RPLidar.

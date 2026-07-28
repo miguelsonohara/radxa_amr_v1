@@ -53,8 +53,8 @@ controller_server:
     # --------------------------------------------------------------------------
 
     # Running frequency of the controller (Hz).
-    # Tuning: 20Hz provides smooth velocity updates. Lower (e.g. 10Hz) to save CPU.
-    controller_frequency: 20.0
+    # Tuning: 10Hz is standard for differential drive robots. Prevents CPU loop overruns while providing smooth motion.
+    controller_frequency: 10.0
 
     # Timeout (seconds) allowed for costmap updates. If local costmap is stale
     # longer than this, the controller stops the robot.
@@ -66,12 +66,14 @@ controller_server:
     min_theta_velocity_threshold: 0.001
 
     # Time (seconds) the controller is allowed to fail (e.g. loop overrun) before triggering recoveries.
-    failure_tolerance: 0.3
+    failure_tolerance: 1.0
 
     # List of plugins for checking progress and goals.
     progress_checker_plugins: ["progress_checker"]
     goal_checker_plugins: ["general_goal_checker"]
     controller_plugins: ["FollowPath"]
+    default_goal_checker: "general_goal_checker"
+    default_progress_checker: "progress_checker"
 
     # Enables real-time thread priority (set false if not using a RT kernel).
     use_realtime_priority: false
@@ -95,106 +97,37 @@ controller_server:
       xy_goal_tolerance: 0.20
       # Goal tolerance in heading (radians).
       # Tuning: 0.20 rad (~11 degrees). Decrease to force precise heading alignment.
-      yaw_goal_tolerance: 0.40
+      yaw_goal_tolerance: 0.10
 
-    # FollowPath (Regulated Pure Pursuit Controller):
-    # Excellent, computationally light local planner for differential drive robots.
-    # FollowPath:
-    #   plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
-    #   max_vel_x: 0.4
-    #   # Minimum linear velocity (m/s) (negative value allows reversing if enabled).
-    #   min_vel_x: 0.05 #old value 0.0
-    #   # Maximum angular velocity (rad/s).
-    #   # Tuning: 1.5 rad/s (~85 deg/s) allows rapid turning in place.
-    #   max_vel_theta: 3.0
-    #   # Maximum linear acceleration (m/s^2).
-    #   max_accel_x: 5.0
-    #   # Maximum angular acceleration (rad/s^2).
-    #   max_accel_theta: 5.0
-    #   # Lookahead distance (meters) used to compute pure pursuit steering.
-    #   # Tuning: Larger values smooth path following but cut corners. Smaller values track
-    #   # the global path tightly but can cause oscillations. Typical value: 0.4m - 1.0m.
-    #   lookahead_dist: 0.8
-    #   # Scale factor to increase lookahead distance proportionally with speed (seconds).
-    #   # lookahead_dist = lookahead_dist + (speed * lookahead_time)
-    #   lookahead_time: 1.5
-    #   # Minimum lookahead distance (meters) to prevent steering instability at slow speeds.
-    #   min_lookahead_dist: 0.4
-    #   # Scale factor to reduce speed when turning.
-    #   # Tuning: Lower values slow down the robot more aggressively on sharp turns.
-    #   regulated_linear_scaling_parameter: 0.05
-    #   # If true, slows down when approaching obstacles.
-    #   use_regulated_linear_velocity_scaling: true
-    #   # Scale factor to slow down when near obstacles.
-    #   cost_scaling_dist: 0.6
-    #   # Minimum speed (m/s) during regulated scaling to prevent the robot from stopping entirely.
-    #   min_approach_linear_velocity: 0.2 # old_value = 0.0
-    #   # If true, enables rotating in place to align with path heading if angular error is high.
-    #   use_rotate_to_heading: true
-    #   # Angular error threshold (radians) to trigger rotation in place before moving.
-    #   # Tuning: 0.5 rad (~28 degrees). If path error exceeds this, the robot turns first.
-    #   rotate_to_heading_angular_coarse_max_dist: 1.6
-    #   # Threshold below which the robot stops turning in place and begins driving (radians).
-    #   rotate_to_heading_min_angle: 0.2
-    #   max_angular_accel: 5.0
-    #   # Specific angular velocity (rad/s) used during in-place rotation to heading.
-    #   rotate_to_heading_angular_vel: 1.6
-    #   # Allows the controller to use the obstacle costmap to slow down.
-    #   use_costmap_prevent_runaway: true
-    #   # Time projection (seconds) to check for collisions ahead.
-    #   max_allowed_time_to_collision_up_to_carrot: 1.0
-    #   # If true, visualizes the lookahead point (carrot) in RViz.
-    #   transform_tolerance: 0.1
     FollowPath:
-      plugin: "dwb_core::DWBLocalPlanner"
-      debug_trajectory_details: True
-      min_vel_x: 0.0
-      min_vel_y: 0.0
-      max_vel_x: 0.5
-      max_vel_y: 0.0
-      max_vel_theta: 3.0
-      min_vel_theta: -3.0
-      min_speed_xy: 0.0
-      max_speed_xy: 0.5
-      min_speed_theta: 1.6
-      acc_lim_x: 3.0
-      acc_lim_y: 0.0
-      acc_lim_theta: 5.0
-      decel_lim_x: -2.5
-      decel_lim_y: 0.0
-      decel_lim_theta: -5.0
-      vx_samples: 20
-      vy_samples: 0
-      vtheta_samples: 20
-      sim_time: 1.7
-      linear_granularity: 0.05
-      angular_granularity: 0.025
-      xy_goal_tolerance: 0.25
-      path_length_tolerance: 1.0
-      trans_stopped_velocity: 0.25
-      short_circuit_trajectory_evaluation: True
-      limit_vel_cmd_in_traj: False
-      stateful: True
-      critics:
-        [
-          "RotateToGoal",
-          "Oscillation",
-          "BaseObstacle",
-          "GoalAlign",
-          "PathAlign",
-          "PathDist",
-          "GoalDist",
-        ]
-      BaseObstacle.scale: 0.1
-      PathAlign.scale: 32.0
-      GoalAlign.scale: 45.0
-      PathAlign.forward_point_distance: 0.1
-      GoalAlign.forward_point_distance: 0.1
-      PathDist.scale: 32.0
-      GoalDist.scale: 24.0
-      RotateToGoal.scale: 32.0
-      RotateToGoal.slowing_factor: 1.0
-      RotateToGoal.lookahead_time: -1.0
+      plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
+      desired_linear_vel: 0.3
+      max_linear_vel: 0.3
+      min_linear_vel: 0.0
+      max_angular_vel: 1.0
+      min_angular_vel: -1.0
+      max_linear_accel: 1.0
+      max_linear_decel: -1.0
+      max_angular_accel: 5.0
+      max_angular_decel: -5.0
+      lookahead_dist: 0.4
+      min_lookahead_dist: 0.25
+      max_lookahead_dist: 0.7
+      lookahead_time: 1.5
+      use_velocity_scaled_lookahead_dist: true
+      min_approach_linear_velocity: 0.05
+      approach_velocity_scaling_dist: 0.4
+      use_collision_detection: true
+      max_allowed_time_to_collision_up_to_carrot: 1.0
+      use_regulated_linear_velocity_scaling: true
+      regulated_linear_scaling_min_speed: 0.05
+      use_cost_regulated_linear_velocity_scaling: false
+      use_rotate_to_heading: true
+      rotate_to_heading_min_angle: 0.26
+      rotate_to_heading_angular_vel: 0.8
+      allow_reversing: false
+      transform_tolerance: 0.2
+
 local_costmap:
   local_costmap:
     ros__parameters:
@@ -203,9 +136,9 @@ local_costmap:
       # --------------------------------------------------------------------------
 
       # Frequency (Hz) at which the costmap is updated with new sensor data.
-      update_frequency: 5.0
+      update_frequency: 10.0
       # Frequency (Hz) at which the costmap is published to RViz.
-      publish_frequency: 2.0
+      publish_frequency: 5.0
 
       # Frame of reference for local navigation.
       # Set to 'odom' so that transient errors in global localization (SLAM) do not
@@ -215,13 +148,13 @@ local_costmap:
       # Robot base frame.
       robot_base_frame: base_link
       # transform_tolerance: 0.1
-      transform_tolerance: 1.0
+      transform_tolerance: 0.2
 
       # If true, the local costmap window moves with the robot (rolling window).
       rolling_window: true
       # Dimensions of the local costmap window in meters (3.0m x 3.0m).
-      width: 5
-      height: 5
+      width: 3
+      height: 3
       # Costmap cell resolution in meters per cell (0.05m = 5cm).
       resolution: 0.05
 
@@ -230,7 +163,8 @@ local_costmap:
       # is ~0.35m. A radius of 0.20m (diameter 0.40m) provides a safe bounding circle.
       # Tuning: Increase to give a wider safety buffer around obstacles; decrease to allow
       # the robot to squeeze through narrow passages.
-      robot_radius: 0.3
+      # robot_radius: 0.35
+      footprint: "[[0.2, 0.15], [0.2, -0.15], [-0.2, -0.15], [-0.2, 0.15]]"
 
       # Layers loaded into the local costmap.
       plugins: ["obstacle_layer", "inflation_layer"]
@@ -239,20 +173,21 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         # Cost scaling factor. Higher values make the cost decay more rapidly away from obstacles.
-        cost_scaling_factor: 3.0
+        cost_scaling_factor: 3.5
         # Radius in meters around obstacles where cost is non-zero.
         # Tuning: 0.50m. Adjust this to change the safety distance kept from walls.
-        inflation_radius: 0.2
+        inflation_radius: 0.3
 
       # Obstacle Layer: Marks obstacles detected by the LiDAR.
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
+        footprint_clearing_enabled: True
         observation_sources: scan
         scan:
           topic: /scan
-          # reliability_policy: "reliable"
           reliability_policy: "best_effort"
+          # reliability_policy: "reliable"
           # Ignore points above this height (meters) to avoid ceiling artifacts.
           max_obstacle_height: 2.0
           # If true, raytraces through free space to clear out outdated obstacles.
@@ -261,13 +196,12 @@ local_costmap:
           marking: True
           data_type: "LaserScan"
           # Maximum range (meters) to clear obstacles using scan raytracing.
-          raytrace_max_range: 3.0
-          # Minimum range to clear obstacles.
-          raytrace_min_range: 0.0
+          raytrace_max_range: 3.5
+          # Minimum range to clear obstacles (0.28m ignores internal chassis poles).
+          raytrace_min_range: 0.28
           # Maximum range (meters) at which to mark obstacles in the costmap.
-          # Tuning: Keep slightly lower than the sensor's physical range to avoid mapping noise.
           obstacle_max_range: 2.5
-          obstacle_min_range: 0.05
+          obstacle_min_range: 0.28
 
       # Force publishing full costmap updates instead of bounding box updates (useful for RViz).
       always_send_full_costmap: True
@@ -280,18 +214,19 @@ global_costmap:
       # --------------------------------------------------------------------------
 
       # Frequency (Hz) at which the global costmap updates its sensor layers.
-      update_frequency: 1.0
+      update_frequency: 10.0
       # Frequency (Hz) at which the global costmap is published to RViz.
-      publish_frequency: 1.0
+      publish_frequency: 3.0
 
       # Frame of reference for global planning (always 'map').
       global_frame: map
       # Robot base frame.
       robot_base_frame: base_link
       # transform_tolerance: 0.1
-      transform_tolerance: 1.0
+      transform_tolerance: 0.2
       # Bounding circle radius (meters). Must match the local costmap.
-      robot_radius: 0.3
+      # robot_radius: 0.35
+      footprint: "[[0.2, 0.15], [0.2, -0.15], [-0.2, -0.15], [-0.2, 0.15]]"
       resolution: 0.05
 
       # If true, allows the planner to plan through unmapped space.
@@ -310,6 +245,7 @@ global_costmap:
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
+        footprint_clearing_enabled: True
         observation_sources: scan
         scan:
           topic: /scan
@@ -319,18 +255,18 @@ global_costmap:
           clearing: True
           marking: True
           data_type: "LaserScan"
-          raytrace_max_range: 3.0
-          raytrace_min_range: 0.0
+          raytrace_max_range: 3.5
+          raytrace_min_range: 0.28
           obstacle_max_range: 2.5
-          obstacle_min_range: 0.05
+          obstacle_min_range: 0.28
 
       # Inflation Layer: Adds safety buffer around obstacles in the global costmap.
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 3.0
+        cost_scaling_factor: 2.0
         # Tuning: Typically larger than the local costmap inflation (e.g. 0.70m) to bias
         # global plans away from walls and center them in corridors.
-        inflation_radius: 0.2
+        inflation_radius: 0.4
 
       always_send_full_costmap: True
 
@@ -402,8 +338,8 @@ behavior_server:
 
     # Speed limits during recovery maneuvers.
     # Tuning: Keep recovery motions slow and controlled (e.g. 0.8 rad/s spin).
-    max_rotational_vel: 3.0
-    min_rotational_vel: 2.54
+    max_rotational_vel: 2.0
+    min_rotational_vel: 0.3
     rotational_acc_lim: 1.0
 
 waypoint_follower:
@@ -432,7 +368,7 @@ velocity_smoother:
     smoothing_frequency: 20.0
 
     # Flag to stamp velocity outputs (keep False for standard geometry_msgs/Twist).
-    stamp_smoothed_velocity_with_smoothing_time: False
+    stamp_smoothed_velocity_with_smoothing_time: true
 
     # Scale linear/angular velocities together to maintain steering geometry.
     scale_velocities: False
@@ -443,17 +379,17 @@ velocity_smoother:
     # Speed Limits [X, Y, Theta].
     # Tuning: Adjust X to match max motor speed (e.g. 0.5m/s). Y is 0.0 (non-holonomic).
     # Theta limits rotational speed.
-    max_velocity: [0.5, 0.0, 3.0]
-    min_velocity: [-0.5, 0.0, -3.0]
+    max_velocity: [0.5, 0.0, 2.5]
+    min_velocity: [-0.5, 0.0, -2.5]
 
     # Acceleration and Deceleration limits.
     # Tuning: Lower values smooth out sudden jerks, saving motor gears and preventing wheel slippage.
-    max_accel: [1.0, 0.0, 4.0]
-    max_decel: [-1.0, 0.0, -4.0]
+    max_accel: [1.0, 0.0, 5.0]
+    max_decel: [-1.0, 0.0, -5.0]
 
     odom_topic: "odom"
     odom_duration: 0.1
-    deadband_velocity: [0.0, 0.0, 0.0]
+    deadband_velocity: [0.0, 0.0, 0.25]
     # Timeout (seconds). If navigation crashes, smoother stops publishing.
     velocity_timeout: 1.0
 
@@ -472,8 +408,8 @@ collision_monitor:
     cmd_vel_out_topic: cmd_vel
 
     state_topic: collision_monitor_state
-    transform_tolerance: 0.2
-    source_timeout: 1.0
+    transform_tolerance: 0.5
+    source_timeout: 2.0
     base_shift_correction: True
     stop_pub_timeout: 2.0
 
@@ -487,11 +423,11 @@ collision_monitor:
       footprint_topic: "/local_costmap/published_footprint"
       # Time (seconds) before collision to trigger emergency stop.
       # Tuning: Increase to stop earlier at higher speeds; decrease to allow closer maneuvers.
-      time_before_collision: 1.0
+      time_before_collision: 0.3
       simulation_time_step: 0.1
       min_points: 3
       visualize: False
-      enabled: True
+      enabled: False
 
     # Laser scan configuration used by the collision monitor.
     observation_sources: ["scan"]

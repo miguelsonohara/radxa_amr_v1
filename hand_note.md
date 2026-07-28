@@ -1,5 +1,6 @@
 # Build command: 
 colcon build --symlink-install
+source install/setup.sh
 
 # LiDAR:
 # ros2 launch sllidar_ros2 sllidar_c1_launch.py serial_port:=/dev/ttyUSB0 serial_baudrate:=460800
