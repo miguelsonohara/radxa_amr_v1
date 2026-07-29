@@ -214,12 +214,12 @@ slam_toolbox:
     restamp_tf: true
 
     # Minimum range (meters) of lidar points to use for drawing the map.
-    # Tuning: Increase to ignore reflections from parts of the robot chassis.
-    min_laser_range: 0.15
+    # Tuning: Increase to ignore reflections from parts of the robot chassis/pillars.
+    min_laser_range: 0.25
 
     # Maximum range (meters) of lidar points to use for drawing the map.
     # Tuning: Reduce (e.g. 12.0) to ignore noisy long-range readings from the RPLidar.
-    max_laser_range: 10.0
+    max_laser_range: 12.0
 
     # Minimum time (seconds) between processing successive scan updates.
     minimum_time_interval: 0.1

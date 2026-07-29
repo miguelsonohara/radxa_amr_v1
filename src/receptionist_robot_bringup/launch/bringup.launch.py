@@ -80,17 +80,18 @@ def generate_launch_description():
         description='Serial port for the LiDAR sensor'
     )
 
-    # Lidar Baudrate: Speed of communication with LiDAR.
+    # Lidar Baudrate: Speed of communication with LiDAR (460800 for RPLidar C1).
     declare_lidar_baudrate = DeclareLaunchArgument(
         'lidar_baudrate',
         default_value='460800',
-        description='Baudrate for RPLidar (typically 115200 for A1/A2, 256000 for A3)'
+        description='Baudrate for RPLidar C1 (460800)'
     )
-    # declare_lidar_baudrate = DeclareLaunchArgument(
-    #     'lidar_baudrate',
-    #     default_value='115200',
-    #     description='Baudrate for HCLiDAR (typically 115200)'
-    # )
+
+    declare_scan_mode = DeclareLaunchArgument(
+        'scan_mode',
+        default_value='Standard',
+        description='Scan mode for RPLidar C1 (Standard or Dense)'
+    )
 
     declare_lidar_model = DeclareLaunchArgument(
         'lidar_model',
@@ -113,7 +114,7 @@ def generate_launch_description():
         output='screen'
     )
 
-    # B. Lidar Node (sllidar_ros2 vs hclidar_driver_ros2)
+    # B. Lidar Node (sllidar_ros2 configured for RPLidar C1)
     lidar_node = Node(
         package='sllidar_ros2',
         executable='sllidar_node',
@@ -124,7 +125,10 @@ def generate_launch_description():
             'serial_baudrate': LaunchConfiguration('lidar_baudrate'),
             'frame_id': 'laser',  # Must match the link name in URDF
             'inverted': False,    # True to mirror scans if mounted upside down
-            'angle_compensate': True
+            'angle_compensate': True,
+            'scan_mode': LaunchConfiguration('scan_mode'),
+            'range_min': 0.25,   # <--- THÊM DÒNG NÀY: Lidar tự bỏ qua các điểm < 0.25m
+            'range_max': 12.0
         }],
         output='screen'
     )
@@ -166,6 +170,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(slam_launch_path),
         launch_arguments={
             'slam_params_file': slam_params_path,
+            'params_file': slam_params_path,
             'use_sim_time': LaunchConfiguration('use_sim_time')
         }.items()
     )
@@ -194,6 +199,7 @@ def generate_launch_description():
     ld.add_action(declare_serial_baudrate)
     ld.add_action(declare_lidar_port)
     ld.add_action(declare_lidar_baudrate)
+    ld.add_action(declare_scan_mode)
     ld.add_action(declare_lidar_model)
     
     # Add Nodes
