@@ -213,9 +213,7 @@ slam_toolbox:
     # Re-apply scan timestamps before publishing transforms to keep time synchronized.
     restamp_tf: true
 
-    # Minimum range (meters) of lidar points to use for drawing the map.
-    # Tuning: Increase to ignore reflections from parts of the robot chassis/pillars.
-    min_laser_range: 0.25
+    # Note: slam_toolbox doesn't have a min_laser_range parameter. It reads range_min directly from the /scan topic header.
 
     # Maximum range (meters) of lidar points to use for drawing the map.
     # Tuning: Reduce (e.g. 12.0) to ignore noisy long-range readings from the RPLidar.
