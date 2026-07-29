@@ -81,8 +81,8 @@ slam_toolbox:
     minimum_travel_distance: 0.1
 
     # Minimum heading change (radians) the robot must rotate before processing a new scan.
-    # Tuning: Decrease (e.g., 0.15) if the robot turns in place quickly and loses localization.
-    minimum_travel_heading: 0.08
+    # Tuning: Decrease (e.g., 0.04) if the robot turns in place quickly and loses localization.
+    minimum_travel_heading: 0.04
 
     # If true, both distance AND heading threshold must be met to process a scan.
     # If false, either threshold being met triggers a scan update (default, safer).
@@ -162,11 +162,11 @@ slam_toolbox:
 
     # Penalty weight applied to translation updates that deviate from odometry.
     # Tuning: Increase (e.g., 0.8) to trust your ESP32 odometry more; decrease to trust LiDAR matches more.
-    distance_variance_penalty: 0.3
+    distance_variance_penalty: 0.1
 
     # Penalty weight applied to rotation updates that deviate from odometry.
     # Tuning: Increase if your robot rotates smoothly and you want to prevent LiDAR sliding on walls.
-    angle_variance_penalty: 0.3
+    angle_variance_penalty: 0.05
 
     # Angular search range offset (radians) for fine matching.
     fine_search_angle_offset: 0.00349
@@ -178,7 +178,7 @@ slam_toolbox:
     coarse_angle_resolution: 0.0349
 
     # Minimum score penalty for orientation deviations.
-    minimum_angle_penalty: 0.9
+    minimum_angle_penalty: 0.5
 
     # Minimum score penalty for translation deviations.
     minimum_distance_penalty: 0.5
