@@ -55,10 +55,10 @@ slam_toolbox:
 
     # SLAM operation mode.
     # Options: mapping (build a map from scratch) or localization (localize in a loaded map).
-    mode: localization
-    map_file_name: /home/radxa/receptionist_robot_ws/map/test_map_2
+    # mode: localization
+    # map_file_name: /home/radxa/receptionist_robot_ws/map/test_map_2
 
-    # mode: mapping
+    mode: mapping
 
     map_start_pose: [0.0, 0.0, 0.0]
     map_start_at_dock: false
@@ -214,8 +214,8 @@ slam_toolbox:
     restamp_tf: true
 
     # Minimum range (meters) of lidar points to use for drawing the map.
-    # Tuning: Set to 0.28m to ignore reflections from internal chassis poles inside the robot radius.
-    min_laser_range: 0.28
+    # Tuning: Increase to ignore reflections from parts of the robot chassis.
+    min_laser_range: 0.15
 
     # Maximum range (meters) of lidar points to use for drawing the map.
     # Tuning: Reduce (e.g. 12.0) to ignore noisy long-range readings from the RPLidar.

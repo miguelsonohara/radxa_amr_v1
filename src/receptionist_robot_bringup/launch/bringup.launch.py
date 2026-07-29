@@ -124,8 +124,7 @@ def generate_launch_description():
             'serial_baudrate': LaunchConfiguration('lidar_baudrate'),
             'frame_id': 'laser',  # Must match the link name in URDF
             'inverted': False,    # True to mirror scans if mounted upside down
-            'angle_compensate': True,
-            'min_distance': 0.28  # Filter out chassis poles inside robot radius
+            'angle_compensate': True
         }],
         output='screen'
     )
