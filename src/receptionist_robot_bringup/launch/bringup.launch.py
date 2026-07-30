@@ -33,6 +33,7 @@ def generate_launch_description():
     # Locate our custom parameter files
     slam_params_path = os.path.join(bringup_dir, 'config', 'slam_toolbox_params.yaml')
     nav2_params_path = os.path.join(bringup_dir, 'config', 'nav2_params.yaml')
+    ekf_params_path = os.path.join(bringup_dir, 'config', 'ekf.yaml')
     
     # Locate navigation bringup launch file from nav2_bringup package
     nav2_launch_path = os.path.join(get_package_share_directory('nav2_bringup'), 'launch', 'navigation_launch.py')
@@ -157,13 +158,22 @@ def generate_launch_description():
             'use_sim_time': LaunchConfiguration('use_sim_time'),
             'robot_description': robot_description_xml
         }]
+    # D. Robot Localization Node (EKF Filter)
+    # Fuses raw wheel odometry (/odom) and IMU (/imu) into /odom/filtered, publishing odom -> base_link TF.
+    robot_localization_node = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
+        output='screen',
+        parameters=[ekf_params_path, {'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        remappings=[('/odometry/filtered', '/odom/filtered')]
     )
 
     # --------------------------------------------------------------------------
     # 4. Included Launch Files (SLAM Toolbox & Nav2 Navigation)
     # --------------------------------------------------------------------------
 
-    # D. SLAM Toolbox Node
+    # E. SLAM Toolbox Node
     # Runs the online async mapping node. Generates `/map` and publishes map->odom TF.
     # Leverages our custom annotated parameters file.
     slam_toolbox_launch = IncludeLaunchDescription(
@@ -175,7 +185,7 @@ def generate_launch_description():
         }.items()
     )
 
-    # E. Nav2 Stack
+    # F. Nav2 Stack
     # Launches controller, planner, behavior server, smoother, collision monitor, 
     # and waypoint follower. It excludes localization (AMCL) since SLAM is active.
     # Uses our custom parameter file.
@@ -206,6 +216,7 @@ def generate_launch_description():
     ld.add_action(micro_ros_agent_node)
     ld.add_action(lidar_node)
     ld.add_action(robot_state_publisher_node)
+    ld.add_action(robot_localization_node)
     
     # Add Included Launchers
     ld.add_action(slam_toolbox_launch)

@@ -255,4 +255,21 @@
     <origin xyz="${lidar_offset_x} ${lidar_offset_y} ${lidar_offset_z}" rpy="0 0 0" />
   </joint>
 
+  <!-- 9. IMU Sensor (frame_id = imu_link) -->
+  <link name="imu_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.02 0.02 0.005" />
+      </geometry>
+      <material name="lidar_material" />
+    </visual>
+  </link>
+
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link" />
+    <child link="imu_link" />
+    <origin xyz="0.0 0.0 0.10" rpy="0 0 0" />
+  </joint>
+
 </robot>
