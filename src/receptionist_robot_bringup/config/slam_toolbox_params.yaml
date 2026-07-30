@@ -55,10 +55,10 @@ slam_toolbox:
 
     # SLAM operation mode.
     # Options: mapping (build a map from scratch) or localization (localize in a loaded map).
-    # mode: localization
-    # map_file_name: /home/radxa/receptionist_robot_ws/map/test_map_2
+    mode: localization
+    map_file_name: /home/radxa/receptionist_robot_ws/map/my_map_ver1
 
-    mode: mapping
+    # mode: mapping
 
     map_start_pose: [0.0, 0.0, 0.0]
     map_start_at_dock: false

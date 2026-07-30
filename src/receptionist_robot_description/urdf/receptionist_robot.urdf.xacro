@@ -7,11 +7,11 @@
 
   <!-- Wheel specifications -->
   <!-- Wheel diameter: 0.065m (6.5cm), radius: 0.0325m -->
-  <xacro:property name="wheel_radius" value="0.0325" />
+  <xacro:property name="wheel_radius" value="0.04" />
   <!-- Wheel width (thickness): 0.025m (2.5cm) -->
-  <xacro:property name="wheel_width" value="0.03" />
+  <xacro:property name="wheel_width" value="0.02" />
   <!-- Wheelbase: 0.30m (30.0cm) separation between wheels along Y-axis -->
-  <xacro:property name="wheelbase" value="0.30" />
+  <xacro:property name="wheelbase" value="0.395" />
   <!-- Wheel mass: 0.15kg -->
   <xacro:property name="wheel_mass" value="0.15" />
 
@@ -19,7 +19,7 @@
   <!-- Cylindrical chassis representing a standard tall receptionist robot -->
   <xacro:property name="chassis_radius" value="0.18" />
   <xacro:property name="chassis_height" value="0.50" />
-  <xacro:property name="chassis_mass" value="10.0" />
+  <xacro:property name="chassis_mass" value="20.0" />
 
   <!-- Caster specifications -->
   <!-- Sphere caster diameter is sized to touch the ground.

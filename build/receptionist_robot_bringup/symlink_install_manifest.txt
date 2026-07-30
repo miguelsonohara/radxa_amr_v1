@@ -1,5 +1,6 @@
 /home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/launch/bringup.launch.py
 /home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/launch/hardware.launch.py
+/home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/config/ekf.yaml
 /home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/config/nav2_params.yaml
 /home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/receptionist_robot_bringup/config/slam_toolbox_params.yaml
 /home/radxa/receptionist_robot_ws/install/receptionist_robot_bringup/share/ament_index/resource_index/package_run_dependencies/receptionist_robot_bringup

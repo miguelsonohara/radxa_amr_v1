@@ -61,7 +61,7 @@ def generate_launch_description():
     # Typically '/dev/ttyACM0' (USB OTG/direct) or '/dev/ttyUSB0' (UART converter).
     declare_serial_port = DeclareLaunchArgument(
         'serial_port',
-        default_value='/dev/serial/by-id/usb-1a86_USB_Single_Serial_5C36139941-if00',
+        default_value='/dev/serial/by-id/usb-1a86_USB_Single_Serial_5C36140582-if00',
         description='Serial port for the micro-ROS Agent connection to ESP32'
     )
 
@@ -158,6 +158,7 @@ def generate_launch_description():
             'use_sim_time': LaunchConfiguration('use_sim_time'),
             'robot_description': robot_description_xml
         }]
+    )
     # D. Robot Localization Node (EKF Filter)
     # Fuses raw wheel odometry (/odom) and IMU (/imu) into /odom/filtered, publishing odom -> base_link TF.
     robot_localization_node = Node(
