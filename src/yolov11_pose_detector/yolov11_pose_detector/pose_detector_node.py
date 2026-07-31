@@ -5,7 +5,7 @@ YOLOv11 Pose Detector & Sensor Fusion Node
 Refactored for ROS 2 Jazzy:
 - Clean modular structure with dedicated helper methods
 - All magic numbers and paths exposed as configurable ROS 2 parameters
-- Module-level visual constants to avoid per-frame allocations
+- Inter-robot state machine via /general_status (IDLE, SERVE, COMEBACK -> RETURNING_HOME -> IDLE)
 """
 
 import os
@@ -19,6 +19,7 @@ from rclpy.action import ActionClient
 
 from sensor_msgs.msg import Image, LaserScan, CameraInfo
 from geometry_msgs.msg import PointStamped, PoseStamped
+from std_msgs.msg import String
 from nav2_msgs.action import NavigateToPose
 
 import tf2_ros
@@ -67,6 +68,7 @@ class YoloV11PoseDetectorNode(Node):
         self.declare_parameter('scan_topic', '/scan')
         self.declare_parameter('camera_info_topic', '/camera/camera_info')
         self.declare_parameter('nav_action_server', '/navigate_to_pose')
+        self.declare_parameter('status_topic', '/general_status')
         
         self.declare_parameter('workspace_dir', '/home/radxa/receptionist_robot_ws')
         self.declare_parameter('model_name', 'yolo11n-pose.onnx')
@@ -96,6 +98,10 @@ class YoloV11PoseDetectorNode(Node):
         self.declare_parameter('lidar_gate_range_margin', 0.5)
         self.declare_parameter('lidar_gate_angle_deg', 5.0)
         self.declare_parameter('goal_cooldown_sec', 6.0)
+        
+        self.declare_parameter('home_x', 0.0)
+        self.declare_parameter('home_y', 0.0)
+        self.declare_parameter('home_yaw', 0.0)
 
         # ----------------------------------------------------------------------
         # 2. Retrieve Parameter Values
@@ -105,6 +111,7 @@ class YoloV11PoseDetectorNode(Node):
         scan_topic = self.get_parameter('scan_topic').value
         camera_info_topic = self.get_parameter('camera_info_topic').value
         nav_action_server = self.get_parameter('nav_action_server').value
+        status_topic = self.get_parameter('status_topic').value
         
         self.workspace_dir = self.get_parameter('workspace_dir').value
         self.model_name = self.get_parameter('model_name').value
@@ -135,6 +142,10 @@ class YoloV11PoseDetectorNode(Node):
         self.lidar_gate_angle_rad = np.radians(self.get_parameter('lidar_gate_angle_deg').value)
         self.goal_cooldown_sec = self.get_parameter('goal_cooldown_sec').value
 
+        self.home_x = self.get_parameter('home_x').value
+        self.home_y = self.get_parameter('home_y').value
+        self.home_yaw = self.get_parameter('home_yaw').value
+
         self.get_logger().info("Initializing YOLOv11 Pose & Sensor Fusion Node...")
 
         # ----------------------------------------------------------------------
@@ -146,11 +157,14 @@ class YoloV11PoseDetectorNode(Node):
         self._init_yolo_model()
 
         # ----------------------------------------------------------------------
-        # 4. ROS Subscriptions & Action Client
+        # 4. ROS Subscriptions, Publishers & Action Client
         # ----------------------------------------------------------------------
         self.bridge = CvBridge()
         self.publisher = self.create_publisher(Image, output_topic, 10)
         self.subscription = self.create_subscription(Image, input_topic, self.image_callback, 10)
+        
+        self.status_pub = self.create_publisher(String, status_topic, 10)
+        self.status_sub = self.create_subscription(String, status_topic, self.general_status_callback, 10)
         
         self.latest_scan = None
         self.scan_subscription = self.create_subscription(LaserScan, scan_topic, self.scan_callback, 10)
@@ -164,7 +178,12 @@ class YoloV11PoseDetectorNode(Node):
         self.navigation_status = "IDLE"
         self.last_goal_sent_time = 0.0
 
-        # State / Visual Stats
+        # Inter-Robot State Machine Initialization
+        self.general_status = "IDLE"
+        self.target_type = "NONE"  # "PERSON" or "HOME"
+        self._publish_general_status("IDLE")
+
+        # Visual Telemetry Stats
         self.prev_time = 0.0
         self.fps = 0.0
         self.tracker_mode = "Mono Est"
@@ -172,7 +191,7 @@ class YoloV11PoseDetectorNode(Node):
         self.gesture_active = False
 
     # ==========================================================================
-    # Initialization Helpers
+    # Initialization & Status Helpers
     # ==========================================================================
     def _init_yolo_model(self):
         """Loads ONNX Runtime session or falls back to PyTorch YOLO."""
@@ -208,6 +227,14 @@ class YoloV11PoseDetectorNode(Node):
             self.model = YOLO(pt_model_path)
             self.get_logger().info("Fallback PyTorch model loaded successfully!")
 
+    def _publish_general_status(self, status_str):
+        """Updates internal status and publishes string to /general_status."""
+        self.general_status = status_str
+        msg = String()
+        msg.data = status_str
+        self.status_pub.publish(msg)
+        self.get_logger().info(f"Updated and published /general_status -> '{status_str}'")
+
     # ==========================================================================
     # ROS Callbacks
     # ==========================================================================
@@ -219,6 +246,14 @@ class YoloV11PoseDetectorNode(Node):
         self.f_y = msg.k[4]
         self.c_x = msg.k[2]
         self.c_y = msg.k[5]
+
+    def general_status_callback(self, msg):
+        """Listens to /general_status for inter-robot commands (e.g. 'COMEBACK')."""
+        cmd = msg.data.strip().upper()
+        if cmd == "COMEBACK":
+            if self.general_status != "RETURNING_HOME":
+                self.get_logger().info("Received 'COMEBACK' command! Returning to home origin pose (0,0,0)...")
+                self._send_home_navigation_goal()
 
     # ==========================================================================
     # Navigation Action Dispatch & Handlers
@@ -234,6 +269,9 @@ class YoloV11PoseDetectorNode(Node):
         if not self.nav_client.wait_for_server(timeout_sec=2.0):
             self.get_logger().error("Nav2 Action Server is offline!")
             self.navigation_status = "FAILED"
+            if self.target_type == "HOME":
+                self._publish_general_status("IDLE")
+                self.target_type = "NONE"
             return
             
         goal_msg = NavigateToPose.Goal()
@@ -245,11 +283,32 @@ class YoloV11PoseDetectorNode(Node):
         )
         self.send_goal_future.add_done_callback(self.nav_goal_response_callback)
 
+    def _send_home_navigation_goal(self):
+        """Constructs home origin pose (0,0,0) and dispatches to Nav2."""
+        self.target_type = "HOME"
+        self._publish_general_status("RETURNING_HOME")
+
+        home_pose = PoseStamped()
+        home_pose.header.frame_id = self.map_frame_id
+        home_pose.header.stamp = self.get_clock().now().to_msg()
+        home_pose.pose.position.x = self.home_x
+        home_pose.pose.position.y = self.home_y
+        
+        q_z = np.sin(self.home_yaw / 2.0)
+        q_w = np.cos(self.home_yaw / 2.0)
+        home_pose.pose.orientation.z = q_z
+        home_pose.pose.orientation.w = q_w
+
+        self.send_navigation_goal(home_pose)
+
     def nav_goal_response_callback(self, future):
         goal_handle = future.result()
         if not goal_handle.accepted:
             self.get_logger().warn("Navigation target REJECTED by Nav2.")
             self.navigation_status = "FAILED"
+            if self.target_type == "HOME":
+                self._publish_general_status("IDLE")
+                self.target_type = "NONE"
             return
             
         self.get_logger().info("Navigation target ACCEPTED by Nav2.")
@@ -267,9 +326,18 @@ class YoloV11PoseDetectorNode(Node):
         if status == 4:  # GoalStatus.STATUS_SUCCEEDED
             self.get_logger().info("Robot successfully reached target position!")
             self.navigation_status = "ARRIVED"
+            if self.target_type == "PERSON":
+                self._publish_general_status("SERVE")
+            elif self.target_type == "HOME":
+                self.get_logger().info("Arrived at home pose! Transitioning back to IDLE state.")
+                self._publish_general_status("IDLE")
+                self.target_type = "NONE"
         else:
             self.get_logger().warn(f"Navigation failed (status={status})")
             self.navigation_status = "FAILED"
+            if self.target_type == "HOME":
+                self._publish_general_status("IDLE")
+                self.target_type = "NONE"
         self.nav_goal_handle = None
 
     # ==========================================================================
@@ -309,11 +377,12 @@ class YoloV11PoseDetectorNode(Node):
                     self.gesture_active = self._check_wrist_gesture(det['kpts'], det['kpts_conf'])
                     target_goal_pose = self._process_person_tracking(det['kpts'], det['kpts_conf'])
 
-        # 3. Handle Navigation Action Triggering
-        if self.gesture_active and target_goal_pose is not None:
+        # 3. Handle Navigation Action Triggering (Only if currently IDLE or SERVE, not RETURNING_HOME)
+        if self.gesture_active and target_goal_pose is not None and self.general_status != "RETURNING_HOME":
             cur_time = time.time()
             if (cur_time - self.last_goal_sent_time) > self.goal_cooldown_sec:
                 self.last_goal_sent_time = cur_time
+                self.target_type = "PERSON"
                 self.send_navigation_goal(target_goal_pose)
 
         # 4. Performance FPS & HUD Render
@@ -632,7 +701,7 @@ class YoloV11PoseDetectorNode(Node):
 
     def _draw_hud(self, img, inf_time_ms, num_persons):
         """Renders HUD telemetry overlay panel."""
-        hud_w, hud_h = 240, 160
+        hud_w, hud_h = 240, 180
         hud_overlay = img.copy()
         cv2.rectangle(hud_overlay, (10, 10), (10 + hud_w, 10 + hud_h), COLOR_DARK_GRAY, -1)
         cv2.addWeighted(hud_overlay, 0.65, img, 0.35, 0, img)
@@ -653,11 +722,14 @@ class YoloV11PoseDetectorNode(Node):
         gest_str = "Gesture: TRIGGERED" if self.gesture_active else "Gesture: WAITING"
         cv2.putText(img, gest_str, (20, 118), cv2.FONT_HERSHEY_SIMPLEX, 0.4, gest_color, 1, cv2.LINE_AA)
 
+        status_color = COLOR_EMERALD if self.general_status in ["SERVE", "IDLE"] else COLOR_AMBER
+        cv2.putText(img, f"Robot State: {self.general_status}", (20, 134), cv2.FONT_HERSHEY_SIMPLEX, 0.4, status_color, 1, cv2.LINE_AA)
+
         nav_color = COLOR_EMERALD if self.navigation_status in ["ARRIVED", "EXECUTING"] else (
             COLOR_CRIMSON if self.navigation_status == "FAILED" else COLOR_WHITE
         )
-        cv2.putText(img, f"Nav Status: {self.navigation_status}", (20, 134), cv2.FONT_HERSHEY_SIMPLEX, 0.4, nav_color, 1, cv2.LINE_AA)
-        cv2.putText(img, f"Detections: {num_persons}", (20, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.4, COLOR_WHITE, 1, cv2.LINE_AA)
+        cv2.putText(img, f"Nav Status: {self.navigation_status}", (20, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.4, nav_color, 1, cv2.LINE_AA)
+        cv2.putText(img, f"Detections: {num_persons}", (20, 166), cv2.FONT_HERSHEY_SIMPLEX, 0.4, COLOR_WHITE, 1, cv2.LINE_AA)
 
 
 def main(args=None):
