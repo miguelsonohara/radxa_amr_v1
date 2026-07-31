@@ -100,6 +100,12 @@ def generate_launch_description():
         description='Model of the HCLiDAR sensor (e.g. X1, X2M)'
     )
 
+    declare_camera_device = DeclareLaunchArgument(
+        'camera_device',
+        default_value='/dev/my_camera',
+        description='Video device path for usb_cam'
+    )
+
     # --------------------------------------------------------------------------
     # 3. Node Declarations
     # --------------------------------------------------------------------------
@@ -170,6 +176,26 @@ def generate_launch_description():
         remappings=[('/odometry/filtered', '/odom/filtered')]
     )
 
+    # G. USB Camera Node
+    usb_cam_node = Node(
+        package='usb_cam',
+        executable='usb_cam_node_exe',
+        name='usb_cam',
+        parameters=[{
+            'video_device': LaunchConfiguration('camera_device'),
+            'brightness': 150
+        }],
+        output='screen'
+    )
+
+    # H. YOLOv11 Pose Detector Node
+    yolo_pose_node = Node(
+        package='yolov11_pose_detector',
+        executable='pose_detector_node',
+        name='yolov11_pose_detector',
+        output='screen'
+    )
+
     # --------------------------------------------------------------------------
     # 4. Included Launch Files (SLAM Toolbox & Nav2 Navigation)
     # --------------------------------------------------------------------------
@@ -212,15 +238,19 @@ def generate_launch_description():
     ld.add_action(declare_lidar_baudrate)
     ld.add_action(declare_scan_mode)
     ld.add_action(declare_lidar_model)
+    ld.add_action(declare_camera_device)
     
     # Add Nodes
     ld.add_action(micro_ros_agent_node)
     ld.add_action(lidar_node)
     ld.add_action(robot_state_publisher_node)
     ld.add_action(robot_localization_node)
+    ld.add_action(usb_cam_node)
+    ld.add_action(yolo_pose_node)
     
     # Add Included Launchers
     ld.add_action(slam_toolbox_launch)
     ld.add_action(nav2_navigation_launch)
 
     return ld
+
