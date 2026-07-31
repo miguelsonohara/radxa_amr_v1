@@ -94,7 +94,7 @@ controller_server:
       # might overshoot and oscillate if the tolerance is too tight for the controller.
       xy_goal_tolerance: 0.10
       # Goal tolerance in heading (radians).
-      # Tuning: 0.20 rad (~11 degrees). Decrease to force precise heading alignment.
+      # Tuning: 0.20 rad (~11 degrees). Decrease to force precise hea05ng alignment.
       yaw_goal_tolerance: 0.10
 
     # FollowPath (Regulated Pure Pursuit Controller):
@@ -156,7 +156,9 @@ controller_server:
       min_vel_theta: -1.0
       min_speed_xy: 0.0
       max_speed_xy: 0.4
-      min_speed_theta: 0.5
+      # Minimum angular speed (rad/s) during rotation.
+      # Tuning: Reduced to 0.1 to allow slow, precise micro-rotations when aligning to goal orientation.
+      min_speed_theta: 0.1
       acc_lim_x: 1.0
       acc_lim_y: 0.0
       acc_lim_theta: 1.0
@@ -193,7 +195,9 @@ controller_server:
       PathDist.scale: 24.0
       GoalDist.scale: 32.0
       RotateToGoal.scale: 60.0
-      RotateToGoal.slowing_factor: 1.0
+      # Scaling factor to decelerate rotation as the robot approaches the target goal heading.
+      # Tuning: Increased to 5.0 so rotation slows down smoothly as the heading error approaches zero.
+      RotateToGoal.slowing_factor: 5.0
       RotateToGoal.lookahead_time: -1.0
 
 local_costmap:
