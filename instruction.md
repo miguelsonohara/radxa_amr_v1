@@ -168,7 +168,7 @@ We have upgraded the `yolov11_pose_detector` package into an advanced **Detectio
 #### A. Start Camera Driver
 Start a camera driver node publishing raw images to `/image_raw` (e.g., using `usb_cam`):
 ```bash
-ros2 run usb_cam usb_cam_node_exe --ros-args -p video_device:=/dev/video0 -p brightness:=150
+ros2 run usb_cam usb_cam_node_exe --ros-args -p video_device:=/dev/my_camera -p brightness:=150
 ```
 
 #### B. Start YOLOv11 Pose & Sensor Fusion Node
@@ -232,6 +232,8 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
+### 6. Return to zero
+ros2 topic pub --once /general_status std_msgs/msg/String "{data: 'COMEBACK'}"
 
 ---
 
