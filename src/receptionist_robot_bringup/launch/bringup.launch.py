@@ -183,6 +183,7 @@ def generate_launch_description():
         name='usb_cam',
         parameters=[{
             'video_device': LaunchConfiguration('camera_device'),
+            'pixel_format': 'mjpeg2rgb',
             'brightness': 150
         }],
         output='screen'
