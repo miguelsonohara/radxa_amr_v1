@@ -17,6 +17,7 @@ from rclpy.node import Node
 from rclpy.duration import Duration
 from rclpy.action import ActionClient
 
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy
 from sensor_msgs.msg import Image, LaserScan, CameraInfo
 from geometry_msgs.msg import PointStamped, PoseStamped
 from std_msgs.msg import String
@@ -163,8 +164,13 @@ class YoloV11PoseDetectorNode(Node):
         self.publisher = self.create_publisher(Image, output_topic, 10)
         self.subscription = self.create_subscription(Image, input_topic, self.image_callback, 10)
         
-        self.status_pub = self.create_publisher(String, status_topic, 10)
-        self.status_sub = self.create_subscription(String, status_topic, self.general_status_callback, 10)
+        status_qos = QoSProfile(
+            depth=10,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+            reliability=QoSReliabilityPolicy.RELIABLE
+        )
+        self.status_pub = self.create_publisher(String, status_topic, status_qos)
+        self.status_sub = self.create_subscription(String, status_topic, self.general_status_callback, status_qos)
         
         self.latest_scan = None
         self.scan_subscription = self.create_subscription(LaserScan, scan_topic, self.scan_callback, 10)
