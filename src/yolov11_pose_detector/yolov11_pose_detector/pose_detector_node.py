@@ -17,7 +17,7 @@ from rclpy.node import Node
 from rclpy.duration import Duration
 from rclpy.action import ActionClient
 
-from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy, QoSHistoryPolicy
 from sensor_msgs.msg import Image, LaserScan, CameraInfo
 from geometry_msgs.msg import PointStamped, PoseStamped
 from std_msgs.msg import String
@@ -165,6 +165,7 @@ class YoloV11PoseDetectorNode(Node):
         self.subscription = self.create_subscription(Image, input_topic, self.image_callback, 10)
         
         status_qos = QoSProfile(
+            history=QoSHistoryPolicy.KEEP_LAST,
             depth=10,
             durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
             reliability=QoSReliabilityPolicy.RELIABLE
@@ -747,7 +748,8 @@ def main(args=None):
         node.get_logger().info("Shutting down YOLOv11 Pose Detector Node...")
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':
