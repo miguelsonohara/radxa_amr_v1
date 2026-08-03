@@ -150,21 +150,21 @@ controller_server:
       debug_trajectory_details: True
       min_vel_x: 0.0
       min_vel_y: 0.0
-      max_vel_x: 0.5
+      max_vel_x: 0.25
       max_vel_y: 0.0
-      max_vel_theta: 1.0
-      min_vel_theta: -1.0
+      max_vel_theta: 0.5
+      min_vel_theta: -0.5
       min_speed_xy: 0.0
-      max_speed_xy: 0.4
+      max_speed_xy: 0.2
       # Minimum angular speed (rad/s) during rotation.
       # Tuning: Reduced to 0.1 to allow slow, precise micro-rotations when aligning to goal orientation.
-      min_speed_theta: 0.1
-      acc_lim_x: 1.0
+      min_speed_theta: 0.05
+      acc_lim_x: 0.5
       acc_lim_y: 0.0
-      acc_lim_theta: 1.0
-      decel_lim_x: -1.0
+      acc_lim_theta: 0.5
+      decel_lim_x: -0.5
       decel_lim_y: 0.0
-      decel_lim_theta: -1.0
+      decel_lim_theta: -0.5
       vx_samples: 20
       vy_samples: 0
       vtheta_samples: 20
@@ -411,9 +411,9 @@ behavior_server:
 
     # Speed limits during recovery maneuvers.
     # Tuning: Keep recovery motions slow and controlled (e.g. 0.8 rad/s spin).
-    max_rotational_vel: 2.0
-    min_rotational_vel: 0.3
-    rotational_acc_lim: 1.0
+    max_rotational_vel: 1.0
+    min_rotational_vel: 0.15
+    rotational_acc_lim: 0.5
 
 waypoint_follower:
   ros__parameters:
@@ -452,13 +452,13 @@ velocity_smoother:
     # Speed Limits [X, Y, Theta].
     # Tuning: Adjust X to match max motor speed (e.g. 0.5m/s). Y is 0.0 (non-holonomic).
     # Theta limits rotational speed.
-    max_velocity: [0.5, 0.0, 1.0]
-    min_velocity: [-0.5, 0.0, -1.0]
+    max_velocity: [0.25, 0.0, 0.5]
+    min_velocity: [-0.25, 0.0, -0.5]
 
     # Acceleration and Deceleration limits.
     # Tuning: Lower values smooth out sudden jerks, saving motor gears and preventing wheel slippage.
-    max_accel: [1.0, 0.0, 1.0]
-    max_decel: [-1.0, 0.0, -1.0]
+    max_accel: [0.5, 0.0, 0.5]
+    max_decel: [-0.5, 0.0, -0.5]
 
     odom_topic: "odom"
     odom_duration: 0.1
