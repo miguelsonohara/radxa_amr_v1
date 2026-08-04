@@ -233,7 +233,10 @@ source install/setup.bash
 ```
 
 ### 6. Return to zero
-ros2 topic pub --once /general_status std_msgs/msg/String "{data: 'COMEBACK'}"
+ros2 topic pub --once -w 0 --qos-durability transient_local --qos-reliability reliable /general_status std_msgs/msg/String "{data: 'SERVE'}"
+
+ros2 topic pub --once -w 0 --qos-durability transient_local --qos-reliability reliable /general_status std_msgs/msg/String "{data: 'COMEBACK'}"
+
 
 ---
 

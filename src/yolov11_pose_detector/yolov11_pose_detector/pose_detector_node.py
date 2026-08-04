@@ -89,7 +89,7 @@ class YoloV11PoseDetectorNode(Node):
         self.declare_parameter('base_frame_id', 'base_link')
         self.declare_parameter('map_frame_id', 'map')
         
-        self.declare_parameter('safety_distance', 1.0)
+        self.declare_parameter('safety_distance', 0.7)
         self.declare_parameter('camera_mount_x', 0.18)
         self.declare_parameter('camera_mount_y', 0.0)
         self.declare_parameter('camera_mount_z', 0.50)
