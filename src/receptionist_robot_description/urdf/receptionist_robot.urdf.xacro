@@ -32,9 +32,9 @@
 
   <!-- Lidar mount offsets -->
   <!-- Placed near the front edge of the robot and elevated on a mast or shelf -->
-  <xacro:property name="lidar_offset_x" value="0.0" />
+  <xacro:property name="lidar_offset_x" value="-0.01" />
   <xacro:property name="lidar_offset_y" value="0.0" />
-  <xacro:property name="lidar_offset_z" value="0.25" />
+  <xacro:property name="lidar_offset_z" value="0.17" />
   <xacro:property name="lidar_mass" value="0.25" />
 
   <!-- ==================================================================== -->
@@ -233,7 +233,7 @@
   <!-- 8. Lidar Sensor (frame_id = laser) -->
   <link name="laser">
     <visual>
-      <origin xyz="0 0 0" rpy="0 0 0" />
+      <origin xyz="-0.1 0 0.17" rpy="0 0 0" />
       <geometry>
         <!-- Standard puck cylinder shape for RPLidar A1/A2 -->
         <cylinder radius="0.035" length="0.04" />
@@ -258,7 +258,7 @@
   <!-- 9. IMU Sensor (frame_id = imu_link) -->
   <link name="imu_link">
     <visual>
-      <origin xyz="0 0 0" rpy="0 0 0" />
+      <origin xyz="0.01 0 0.1" rpy="0 0 0" />
       <geometry>
         <box size="0.02 0.02 0.005" />
       </geometry>
@@ -269,7 +269,7 @@
   <joint name="imu_joint" type="fixed">
     <parent link="base_link" />
     <child link="imu_link" />
-    <origin xyz="0.0 0.0 0.10" rpy="0 0 0" />
+    <origin xyz="0.01 0.0 0.10" rpy="0 0 0" />
   </joint>
 
 </robot>

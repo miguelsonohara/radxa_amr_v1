@@ -66,7 +66,8 @@ controller_server:
     min_theta_velocity_threshold: 0.001
 
     # Time (seconds) the controller is allowed to fail (e.g. loop overrun) before triggering recoveries.
-    failure_tolerance: 0.3
+    # Tuning: Increased to 1.5s to prevent premature aborts near obstacles.
+    failure_tolerance: 1.5
 
     # List of plugins for checking progress and goals.
     progress_checker_plugins: ["progress_checker"]
@@ -90,115 +91,113 @@ controller_server:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
       # Goal tolerance in meters.
-      # Tuning: 0.20m-0.25m is standard. Decrease for precise positioning, but the robot
-      # might overshoot and oscillate if the tolerance is too tight for the controller.
       xy_goal_tolerance: 0.10
       # Goal tolerance in heading (radians).
-      # Tuning: 0.20 rad (~11 degrees). Decrease to force precise hea05ng alignment.
       yaw_goal_tolerance: 0.10
 
     # FollowPath (Regulated Pure Pursuit Controller):
     # Excellent, computationally light local planner for differential drive robots.
-    # FollowPath:
-    #   plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
-    #   max_vel_x: 0.3
-    #   # Minimum linear velocity (m/s) (negative value allows reversing if enabled).
-    #   min_vel_x: 0.0
-    #   # Maximum angular velocity (rad/s).
-    #   # Tuning: 1.0 rad/s (~57 deg/s) matches DWB max angular velocity.
-    #   max_vel_theta: 1.0
-    #   # Maximum linear acceleration (m/s^2).
-    #   max_accel_x: 1.0
-    #   # Maximum angular acceleration (rad/s^2).
-    #   max_accel_theta: 1.5
-    #   # Lookahead distance (meters) used to compute pure pursuit steering.
-    #   # Tuning: 0.5m-0.6m provides smooth, tight path tracking matching DWB.
-    #   lookahead_dist: 0.6
-    #   # Scale factor to increase lookahead distance proportionally with speed (seconds).
-    #   # lookahead_dist = lookahead_dist + (speed * lookahead_time)
-    #   lookahead_time: 1.5
-    #   # Minimum lookahead distance (meters) to prevent steering instability at slow speeds.
-    #   min_lookahead_dist: 0.3
-    #   # Scale factor to reduce speed when turning.
-    #   # Tuning: Lower values slow down the robot more aggressively on sharp turns.
-    #   regulated_linear_scaling_parameter: 0.05
-    #   # If true, slows down when approaching obstacles.
-    #   use_regulated_linear_velocity_scaling: true
-    #   # Scale factor to slow down when near obstacles.
-    #   cost_scaling_dist: 0.6
-    #   # Minimum speed (m/s) during regulated scaling to prevent the robot from stopping entirely.
-    #   min_approach_linear_velocity: 0.05
-    #   # If true, enables rotating in place to align with path heading if angular error is high.
-    #   use_rotate_to_heading: true
-    #   # Angular error threshold (radians) to trigger rotation in place before moving.
-    #   # Tuning: 0.5 rad (~28 degrees). If path error exceeds this, the robot turns first.
-    #   rotate_to_heading_angular_coarse_max_dist: 1.6
-    #   # Threshold below which the robot stops turning in place and begins driving (radians).
-    #   rotate_to_heading_min_angle: 0.2
-    #   max_angular_accel: 1.5
-    #   # Specific angular velocity (rad/s) used during in-place rotation to heading.
-    #   rotate_to_heading_angular_vel: 1.0
-    #   # Allows the controller to use the obstacle costmap to slow down.
-    #   use_costmap_prevent_runaway: true
-    #   # Time projection (seconds) to check for collisions ahead.
-    #   max_allowed_time_to_collision_up_to_carrot: 1.0
-    #   # If true, visualizes the lookahead point (carrot) in RViz.
-    #   transform_tolerance: 0.2
-    # FollowPath Option A: Standalone DWB Local Planner (Commented out)
     FollowPath:
-      plugin: "dwb_core::DWBLocalPlanner"
-      debug_trajectory_details: True
+      plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
+      max_vel_x: 0.5
+      # Minimum linear velocity (m/s) (negative value allows reversing if enabled).
       min_vel_x: 0.0
-      min_vel_y: 0.0
-      max_vel_x: 0.4
-      max_vel_y: 0.0
-      max_vel_theta: 0.5
-      min_vel_theta: -0.5
-      min_speed_xy: 0.0
-      max_speed_xy: 0.4
-      # Minimum angular speed (rad/s) during rotation.
-      # Tuning: Reduced to 0.1 to allow slow, precise micro-rotations when aligning to goal orientation.
-      min_speed_theta: 0.05
-      acc_lim_x: 0.5
-      acc_lim_y: 0.0
-      acc_lim_theta: 0.5
-      decel_lim_x: -0.5
-      decel_lim_y: 0.0
-      decel_lim_theta: -0.5
-      vx_samples: 20
-      vy_samples: 0
-      vtheta_samples: 20
-      sim_time: 1.2
-      linear_granularity: 0.05
-      angular_granularity: 0.025
-      xy_goal_tolerance: 0.10
-      path_length_tolerance: 0.2
-      trans_stopped_velocity: 0.25
-      short_circuit_trajectory_evaluation: True
-      limit_vel_cmd_in_traj: False
-      stateful: True
-      critics:
-        [
-          "RotateToGoal",
-          "Oscillation",
-          "BaseObstacle",
-          "GoalAlign",
-          "PathAlign",
-          "PathDist",
-          "GoalDist",
-        ]
-      BaseObstacle.scale: 0.1
-      PathAlign.scale: 60.0
-      GoalAlign.scale: 48.0
-      PathAlign.forward_point_distance: 0.20
-      GoalAlign.forward_point_distance: 0.15
-      PathDist.scale: 24.0
-      GoalDist.scale: 32.0
-      RotateToGoal.scale: 60.0
-      # Scaling factor to decelerate rotation as the robot approaches the target goal heading.
-      # Tuning: Increased to 5.0 so rotation slows down smoothly as the heading error approaches zero.
-      RotateToGoal.slowing_factor: 5.0
-      RotateToGoal.lookahead_time: -1.0
+      # Maximum angular velocity (rad/s).
+      # Tuning: 0.8 rad/s (~46 deg/s) provides smooth rotational maneuverability.
+      max_vel_theta: 1.0
+      # Maximum linear acceleration (m/s^2).
+      max_accel_x: 0.5
+      # Maximum angular acceleration (rad/s^2).
+      max_accel_theta: 1.0
+      # Lookahead distance (meters) used to compute pure pursuit steering.
+      # Tuning: 0.5m-0.6m provides smooth, tight path tracking matching DWB.
+      lookahead_dist: 0.6
+      # Scale factor to increase lookahead distance proportionally with speed (seconds).
+      # lookahead_dist = lookahead_dist + (speed * lookahead_time)
+      lookahead_time: 1.5
+      # Minimum lookahead distance (meters) to prevent steering instability at slow speeds.
+      min_lookahead_dist: 0.3
+      # Scale factor to reduce speed when turning.
+      # Tuning: Lower values slow down the robot more aggressively on sharp turns.
+      regulated_linear_scaling_parameter: 0.05
+      # If true, slows down when approaching obstacles.
+      use_regulated_linear_velocity_scaling: true
+      # Scale factor to slow down when near obstacles.
+      cost_scaling_dist: 0.6
+      # Minimum speed (m/s) during regulated scaling to prevent the robot from stopping entirely.
+      min_approach_linear_velocity: 0.05
+      # If true, enables rotating in place to align with path heading if angular error is high.
+      use_rotate_to_heading: true
+      # Distance along path (meters) to check path heading for rotate_to_heading.
+      rotate_to_heading_angular_coarse_max_dist: 0.6
+      # Threshold below which the robot stops turning in place and begins driving (radians).
+      # Tuning: Set to 0.785 rad (~45 deg) to prevent endless 360-degree rotation hunting.
+      rotate_to_heading_min_angle: 0.785
+      max_angular_accel: 1.0
+      # Specific angular velocity (rad/s) used during in-place rotation to heading.
+      # Tuning: Set to 0.35 rad/s (~20 deg/s) so robot turns nicely and stops precisely within yaw_goal_tolerance without overshooting.
+      rotate_to_heading_angular_vel: 0.2
+      # Set false to allow regulated linear scaling to handle obstacles smoothly without aborting.
+      use_costmap_prevent_runaway: false
+      # Time projection (seconds) to check for collisions ahead.
+      max_allowed_time_to_collision_up_to_carrot: 1.0
+      # If true, visualizes the lookahead point (carrot) in RViz.
+      transform_tolerance: 0.2
+    # FollowPath Option A: Standalone DWB Local Planner (Commented out)
+    # FollowPath:
+    #   plugin: "dwb_core::DWBLocalPlanner"
+    #   debug_trajectory_details: True
+    #   min_vel_x: 0.0
+    #   min_vel_y: 0.0
+    #   max_vel_x: 0.5
+    #   max_vel_y: 0.0
+    #   max_vel_theta: 0.5
+    #   min_vel_theta: -0.5
+    #   min_speed_xy: 0.0
+    #   max_speed_xy: 0.5
+    #   # Minimum angular speed (rad/s) during rotation.
+    #   # Tuning: Reduced to 0.1 to allow slow, precise micro-rotations when aligning to goal orientation.
+    #   min_speed_theta: 0.05
+    #   acc_lim_x: 0.5
+    #   acc_lim_y: 0.0
+    #   acc_lim_theta: 0.5
+    #   decel_lim_x: -0.5
+    #   decel_lim_y: 0.0
+    #   decel_lim_theta: -0.5
+    #   vx_samples: 20
+    #   vy_samples: 0
+    #   vtheta_samples: 20
+    #   sim_time: 1.2
+    #   linear_granularity: 0.05
+    #   angular_granularity: 0.025
+    #   xy_goal_tolerance: 0.10
+    #   path_length_tolerance: 0.2
+    #   trans_stopped_velocity: 0.25
+    #   short_circuit_trajectory_evaluation: True
+    #   limit_vel_cmd_in_traj: False
+    #   stateful: True
+    #   critics:
+    #     [
+    #       "RotateToGoal",
+    #       "Oscillation",
+    #       "BaseObstacle",
+    #       "GoalAlign",
+    #       "PathAlign",
+    #       "PathDist",
+    #       "GoalDist",
+    #     ]
+    #   BaseObstacle.scale: 0.1
+    #   PathAlign.scale: 60.0
+    #   GoalAlign.scale: 48.0
+    #   PathAlign.forward_point_distance: 0.20
+    #   GoalAlign.forward_point_distance: 0.15
+    #   PathDist.scale: 24.0
+    #   GoalDist.scale: 32.0
+    #   RotateToGoal.scale: 60.0
+    #   # Scaling factor to decelerate rotation as the robot approaches the target goal heading.
+    #   # Tuning: Increased to 5.0 so rotation slows down smoothly as the heading error approaches zero.
+    #   RotateToGoal.slowing_factor: 5.0
+    #   RotateToGoal.lookahead_time: -1.0
 
 local_costmap:
   local_costmap:
@@ -235,7 +234,7 @@ local_costmap:
       # is ~0.35m. A radius of 0.20m (diameter 0.40m) provides a safe bounding circle.
       # Tuning: Increase to give a wider safety buffer around obstacles; decrease to allow
       # the robot to squeeze through narrow passages.
-      robot_radius: 0.25
+      robot_radius: 0.30
       # footprint: "[[0.2, 0.15], [0.2, -0.15], [-0.2, -0.15], [-0.2, 0.15]]"
 
       # Layers loaded into the local costmap.
@@ -245,10 +244,10 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         # Cost scaling factor. Higher values make the cost decay more rapidly away from obstacles.
-        cost_scaling_factor: 3.5
+        cost_scaling_factor: 4.0
         # Radius in meters around obstacles where cost is non-zero.
-        # Tuning: 0.50m. Adjust this to change the safety distance kept from walls.
-        inflation_radius: 0.3
+        # Tuning: 0.35m safe margin matching robot_radius 0.25m.
+        inflation_radius: 0.45
 
       # Obstacle Layer: Marks obstacles detected by the LiDAR.
       obstacle_layer:
@@ -336,10 +335,10 @@ global_costmap:
       # Inflation Layer: Adds safety buffer around obstacles in the global costmap.
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 2.0
-        # Tuning: Typically larger than the local costmap inflation (e.g. 0.70m) to bias
+        cost_scaling_factor: 3.0
+        # Tuning: Larger than the local costmap inflation (0.55m) to bias
         # global plans away from walls and center them in corridors.
-        inflation_radius: 0.3
+        inflation_radius: 0.55
 
       always_send_full_costmap: True
 
@@ -450,15 +449,14 @@ velocity_smoother:
     feedback: "OPEN_LOOP"
 
     # Speed Limits [X, Y, Theta].
-    # Tuning: Adjust X to match max motor speed (e.g. 0.5m/s). Y is 0.0 (non-holonomic).
-    # Theta limits rotational speed.
-    max_velocity: [0.4, 0.0, 0.5]
-    min_velocity: [-0.4, 0.0, -0.5]
+    # Tuning: Matched theta limits with RPPC controller.
+    max_velocity: [0.5, 0.0, 1.0]
+    min_velocity: [-0.5, 0.0, -1.0]
 
     # Acceleration and Deceleration limits.
-    # Tuning: Lower values smooth out sudden jerks, saving motor gears and preventing wheel slippage.
-    max_accel: [0.5, 0.0, 0.5]
-    max_decel: [-0.5, 0.0, -0.5]
+    # Tuning: Increased theta decel to -1.5 rad/s^2 for crisp stopping upon reaching goal.
+    max_accel: [0.5, 0.0, 1.0]
+    max_decel: [-0.5, 0.0, -1.5]
 
     odom_topic: "odom"
     odom_duration: 0.1
