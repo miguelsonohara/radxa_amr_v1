@@ -10,6 +10,7 @@ Refactored for ROS 2 Jazzy:
 
 import os
 import time
+from collections import deque
 import cv2
 import numpy as np
 import rclpy
@@ -190,6 +191,18 @@ class YoloV11PoseDetectorNode(Node):
         self.target_type = "NONE"  # "PERSON" or "HOME"
         self._publish_general_status("IDLE")
 
+        # Temporal Filtering & Goal Smoothing Buffers
+        self.declare_parameter('gesture_buffer_size', 10)
+        self.declare_parameter('gesture_trigger_threshold', 7)
+        self.declare_parameter('smooth_buffer_size', 5)
+
+        gesture_buf_size = self.get_parameter('gesture_buffer_size').value
+        self.gesture_trigger_thresh = self.get_parameter('gesture_trigger_threshold').value
+        smooth_buf_size = self.get_parameter('smooth_buffer_size').value
+
+        self.gesture_buffer = deque(maxlen=gesture_buf_size)
+        self.target_pose_history = deque(maxlen=smooth_buf_size)
+
         # Visual Telemetry Stats
         self.prev_time = 0.0
         self.fps = 0.0
@@ -276,7 +289,10 @@ class YoloV11PoseDetectorNode(Node):
         if not self.nav_client.wait_for_server(timeout_sec=2.0):
             self.get_logger().error("Nav2 Action Server is offline!")
             self.navigation_status = "FAILED"
-            if self.target_type == "HOME":
+            if self.target_type == "PERSON":
+                self.get_logger().warn("Nav2 offline while navigating to person! Automatically returning home...")
+                self._send_home_navigation_goal()
+            elif self.target_type == "HOME":
                 self._publish_general_status("IDLE")
                 self.target_type = "NONE"
             return
@@ -313,7 +329,10 @@ class YoloV11PoseDetectorNode(Node):
         if not goal_handle.accepted:
             self.get_logger().warn("Navigation target REJECTED by Nav2.")
             self.navigation_status = "FAILED"
-            if self.target_type == "HOME":
+            if self.target_type == "PERSON":
+                self.get_logger().warn("Navigation to person REJECTED by Nav2! Automatically returning home...")
+                self._send_home_navigation_goal()
+            elif self.target_type == "HOME":
                 self._publish_general_status("IDLE")
                 self.target_type = "NONE"
             return
@@ -342,7 +361,10 @@ class YoloV11PoseDetectorNode(Node):
         else:
             self.get_logger().warn(f"Navigation failed (status={status})")
             self.navigation_status = "FAILED"
-            if self.target_type == "HOME":
+            if self.target_type == "PERSON":
+                self.get_logger().warn("Navigation to person FAILED! Automatically returning home...")
+                self._send_home_navigation_goal()
+            elif self.target_type == "HOME":
                 self._publish_general_status("IDLE")
                 self.target_type = "NONE"
         self.nav_goal_handle = None
@@ -383,9 +405,12 @@ class YoloV11PoseDetectorNode(Node):
                 if count == 0:
                     self.gesture_active = self._check_wrist_gesture(det['kpts'], det['kpts_conf'])
                     target_goal_pose = self._process_person_tracking(det['kpts'], det['kpts_conf'])
+        else:
+            self.gesture_buffer.append(False)
+            self.gesture_active = False
 
-        # 3. Handle Navigation Action Triggering (Only if currently IDLE or SERVE, not RETURNING_HOME)
-        if self.gesture_active and target_goal_pose is not None and self.general_status != "RETURNING_HOME":
+        # 3. Handle Navigation Action Triggering (Only if currently IDLE or SERVE, not RETURNING_HOME or EXECUTING)
+        if self.gesture_active and target_goal_pose is not None and self.general_status != "RETURNING_HOME" and self.navigation_status != "EXECUTING":
             cur_time = time.time()
             if (cur_time - self.last_goal_sent_time) > self.goal_cooldown_sec:
                 self.last_goal_sent_time = cur_time
@@ -544,19 +569,61 @@ class YoloV11PoseDetectorNode(Node):
     # Gesture & Tracking Logic Helpers
     # ==========================================================================
     def _check_wrist_gesture(self, kpts, kpts_conf):
-        """Returns True if left or right wrist is raised above nose level."""
-        nose_y = kpts[0, 1]
-        left_wrist_y = kpts[9, 1]
-        right_wrist_y = kpts[10, 1]
+        """
+        Multi-condition arm geometry gesture detection with temporal frame filtering.
+        Keypoints:
+        0: Nose, 5: L_Shoulder, 6: R_Shoulder, 7: L_Elbow, 8: R_Elbow, 9: L_Wrist, 10: R_Wrist
+        """
+        l_sh_conf = kpts_conf[5] if len(kpts_conf) > 5 else 0.0
+        r_sh_conf = kpts_conf[6] if len(kpts_conf) > 6 else 0.0
+        l_el_conf = kpts_conf[7] if len(kpts_conf) > 7 else 0.0
+        r_el_conf = kpts_conf[8] if len(kpts_conf) > 8 else 0.0
+        l_wr_conf = kpts_conf[9] if len(kpts_conf) > 9 else 0.0
+        r_wr_conf = kpts_conf[10] if len(kpts_conf) > 10 else 0.0
 
-        if kpts_conf[0] > self.kp_conf_threshold:
-            if (kpts_conf[9] > self.kp_conf_threshold and left_wrist_y < nose_y) or \
-               (kpts_conf[10] > self.kp_conf_threshold and right_wrist_y < nose_y):
-                return True
-        return False
+        nose_y = kpts[0, 1] if kpts_conf[0] > self.kp_conf_threshold else None
+
+        # Check Left Arm: Wrist higher than Shoulder AND Wrist higher than Elbow
+        left_raised = False
+        if l_wr_conf > self.kp_conf_threshold and l_sh_conf > self.kp_conf_threshold:
+            wrist_y = kpts[9, 1]
+            shoulder_y = kpts[5, 1]
+            if wrist_y < shoulder_y:
+                if l_el_conf > self.kp_conf_threshold:
+                    elbow_y = kpts[7, 1]
+                    if wrist_y < elbow_y:
+                        left_raised = True
+                else:
+                    if nose_y is not None and wrist_y < nose_y:
+                        left_raised = True
+
+        # Check Right Arm: Wrist higher than Shoulder AND Wrist higher than Elbow
+        right_raised = False
+        if r_wr_conf > self.kp_conf_threshold and r_sh_conf > self.kp_conf_threshold:
+            wrist_y = kpts[10, 1]
+            shoulder_y = kpts[6, 1]
+            if wrist_y < shoulder_y:
+                if r_el_conf > self.kp_conf_threshold:
+                    elbow_y = kpts[8, 1]
+                    if wrist_y < elbow_y:
+                        right_raised = True
+                else:
+                    if nose_y is not None and wrist_y < nose_y:
+                        right_raised = True
+
+        raw_gesture = left_raised or right_raised
+
+        # Append result to temporal ring buffer
+        self.gesture_buffer.append(raw_gesture)
+
+        # Triggered if at least gesture_trigger_thresh frames out of gesture_buffer_size detected gesture
+        num_positive_frames = sum(self.gesture_buffer)
+        is_triggered = num_positive_frames >= self.gesture_trigger_thresh
+
+        return is_triggered
 
     def _process_person_tracking(self, kpts, kpts_conf):
-        """Estimates distance, fuses LiDAR range data, and projects Nav2 target pose."""
+        """Estimates distance, fuses LiDAR range data, and projects Nav2 target pose with moving average smoothing."""
         left_shoulder = kpts[5]
         right_shoulder = kpts[6]
 
@@ -570,14 +637,15 @@ class YoloV11PoseDetectorNode(Node):
         if d_pixel <= 5.0:
             return None
 
-        # 1. Monocular Distance Estimation from Shoulders
+        # 1. Monocular Coarse Range Estimation
         Z_est = (self.person_shoulder_width * self.f_x) / d_pixel
+        Z_est = float(np.clip(Z_est, 0.8, 8.0))
+
         shoulder_center_u = (left_shoulder[0] + right_shoulder[0]) / 2.0
         shoulder_center_v = (left_shoulder[1] + right_shoulder[1]) / 2.0
-        theta_est = np.arctan2(shoulder_center_u - self.c_x, self.f_x)
 
-        # 2. LiDAR Gating & Sensor Fusion
-        d_lidar = self._fuse_lidar_distance(Z_est, theta_est)
+        # 2. LiDAR Ray-Casting & Smart Hybrid Window Gating
+        d_lidar = self._fuse_lidar_distance(shoulder_center_u, shoulder_center_v, Z_est)
         self.fused_distance = d_lidar
 
         # 3. 3D Coordinates in Camera Optical Frame
@@ -590,22 +658,62 @@ class YoloV11PoseDetectorNode(Node):
         if target_coords is None:
             return None
 
-        # 5. Safety Offset Pose Generation
-        return self._generate_safety_goal_pose(target_coords[0], target_coords[1])
+        # 5. Moving Average Position Smoothing (5-frame filter)
+        self.target_pose_history.append(target_coords)
+        avg_x = float(np.mean([pt[0] for pt in self.target_pose_history]))
+        avg_y = float(np.mean([pt[1] for pt in self.target_pose_history]))
 
-    def _fuse_lidar_distance(self, Z_est, theta_est):
-        """Gates and returns fused LiDAR distance if valid scan rays are present."""
+        # 6. Safety Offset Goal Pose Generation
+        return self._generate_safety_goal_pose(avg_x, avg_y)
+
+    def _fuse_lidar_distance(self, shoulder_center_u, shoulder_center_v, Z_est):
+        """
+        Ray-casting LiDAR fusion with Smart Hybrid Window Gating.
+        Projects sight vector (u, v) from camera to laser frame via TF2 to get true LiDAR azimuth,
+        then filters LiDAR points within depth window [0.6*Z_est, 1.5*Z_est] to reject low obstacles.
+        """
         self.tracker_mode = "Mono Est"
         if self.latest_scan is None:
             return Z_est
+
+        # 1. Project sight ray into camera optical frame
+        x_cam = (shoulder_center_u - self.c_x) / self.f_x
+        y_cam = (shoulder_center_v - self.c_y) / self.f_y
+        z_cam = 1.0
+
+        p_cam = PointStamped()
+        p_cam.header.frame_id = self.camera_frame_id
+        p_cam.header.stamp = rclpy.time.Time().to_msg()
+        p_cam.point.x = x_cam
+        p_cam.point.y = y_cam
+        p_cam.point.z = z_cam
+
+        # 2. Transform sight ray point from camera optical frame to laser frame using TF2
+        theta_laser = None
+        try:
+            if self.tf_buffer.can_transform(self.laser_frame_id, self.camera_frame_id, rclpy.time.Time()):
+                p_laser = self.tf_buffer.transform(p_cam, self.laser_frame_id)
+                # In laser frame (x forward, y left), angle is arctan2(y, x)
+                theta_laser = np.arctan2(p_laser.point.y, p_laser.point.x)
+        except Exception as tf_ex:
+            self.get_logger().warn(f"Sight ray TF transform camera->laser failed: {tf_ex}")
+
+        # Fallback angle estimation if TF fails
+        if theta_laser is None:
+            theta_cam = np.arctan2(shoulder_center_u - self.c_x, self.f_x)
+            theta_laser = -theta_cam + self.camera_laser_yaw_offset
+
+        # 3. Smart Hybrid Window Gating: filter out foreground low obstacles
+        z_min_window = max(0.4, Z_est * 0.6)
+        z_max_window = min(12.0, Z_est * 1.5 + 0.5)
 
         scan = self.latest_scan
         angles = scan.angle_min + np.arange(len(scan.ranges)) * scan.angle_increment
         angles_norm = np.arctan2(np.sin(angles), np.cos(angles))
 
         angle_diff = np.arctan2(
-            np.sin(angles_norm - (theta_est + self.camera_laser_yaw_offset)),
-            np.cos(angles_norm - (theta_est + self.camera_laser_yaw_offset))
+            np.sin(angles_norm - theta_laser),
+            np.cos(angles_norm - theta_laser)
         )
 
         mask_angle = np.abs(angle_diff) <= self.lidar_gate_angle_rad
@@ -613,12 +721,12 @@ class YoloV11PoseDetectorNode(Node):
         for s_idx in np.where(mask_angle)[0]:
             r = scan.ranges[s_idx]
             if scan.range_min <= r <= scan.range_max:
-                if np.abs(r - Z_est) <= self.lidar_gate_margin:
+                if z_min_window <= r <= z_max_window:
                     valid_ranges.append(r)
 
         if len(valid_ranges) > 0:
             self.tracker_mode = "LiDAR Fused"
-            return np.median(valid_ranges)
+            return float(np.median(valid_ranges))
 
         return Z_est
 

@@ -90,10 +90,12 @@ controller_server:
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
-      # Goal tolerance in meters.
-      xy_goal_tolerance: 0.10
-      # Goal tolerance in heading (radians).
+      # Goal tolerance in meters (15cm matches differential drive hardware precision).
+      xy_goal_tolerance: 0.05
+      # Goal tolerance in heading (0.15 rad ~ 8.6 deg).
       yaw_goal_tolerance: 0.10
+      # Latch XY goal tolerance once inside radius so turning in place does not re-trigger XY position hunting.
+      latch_xy_goal_tolerance: True
 
     # FollowPath (Regulated Pure Pursuit Controller):
     # Excellent, computationally light local planner for differential drive robots.
@@ -135,8 +137,8 @@ controller_server:
       rotate_to_heading_min_angle: 0.785
       max_angular_accel: 1.0
       # Specific angular velocity (rad/s) used during in-place rotation to heading.
-      # Tuning: Set to 0.35 rad/s (~20 deg/s) so robot turns nicely and stops precisely within yaw_goal_tolerance without overshooting.
-      rotate_to_heading_angular_vel: 0.2
+      # Tuning: Set to 0.30 rad/s (~17 deg/s) so robot turns smoothly and stops precisely on heading without overshooting.
+      rotate_to_heading_angular_vel: 0.30
       # Set false to allow regulated linear scaling to handle obstacles smoothly without aborting.
       use_costmap_prevent_runaway: false
       # Time projection (seconds) to check for collisions ahead.
