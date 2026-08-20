@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'pose_detector_node = yolov11_pose_detector.pose_detector_node:main'
+            'pose_detector_node = yolov11_pose_detector.pose_detector_node:main',
+            'opencv_cam_node = yolov11_pose_detector.opencv_cam_node:main'
         ],
     },
 )

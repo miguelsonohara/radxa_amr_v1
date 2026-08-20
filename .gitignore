@@ -1,4 +1,30 @@
-/EDS_Bot
-/build
-/install
-/log
+# ROS2 Build & Log
+build/
+install/
+log/
+*.log
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Video & Media
+*.mp4
+*.avi
+*.mkv
+
+# Weights & Models
+*.onnx
+*.pt
+*.pth
+*.bin
+*.zip
+
+# Temporary / System
+.gemini/
+*.csv
+*.txt
+*.gv
+*.pdf
+

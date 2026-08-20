@@ -1,1 +1,0 @@
-/home/radxa/receptionist_robot_ws/build/receptionist_robot_description/ament_cmake_core/receptionist_robot_descriptionConfig.cmake

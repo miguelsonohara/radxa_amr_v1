@@ -1,6 +1,5 @@
 # Build command: 
-colcon build --symlink-install
-source install/setup.sh
+colcon build --symlink-install && source install/setup.sh
 
 # LiDAR:
 # ros2 launch sllidar_ros2 sllidar_c1_launch.py serial_port:=/dev/ttyUSB0 serial_baudrate:=460800
@@ -41,3 +40,8 @@ ros2 run tf2_tools view_frames
 # Control 
 ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p stamped:=true
+
+# Service
+sudo systemctl daemon-reload && sudo systemctl enable --now robot_bringup.service
+
+bash -c "pkill -9 -f bringup; pkill -9 -f ros2; pkill -9 -f nav2; pkill -9 -f slam_toolbox; pkill -9 -f pose_detector; pkill -9 -f usb_cam; pkill -9 -f sllidar; pkill -9 -f micro_ros; sleep 2; ps aux | grep -E 'ros|nav2|yolo'"

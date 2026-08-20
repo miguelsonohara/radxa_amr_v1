@@ -1,0 +1,19 @@
+[Unit]
+Description=Receptionist robot ROS 2 bringup (Nav2, SLAM, LiDAR, ESP32, camera, YOLO)
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=/home/radxa/receptionist_robot_ws
+ExecStart=/home/radxa/receptionist_robot_ws/start_robot_bringup.sh
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+KillMode=mixed
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=robot-bringup
+
+[Install]
+WantedBy=default.target

@@ -18,7 +18,7 @@ import xacro
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -183,8 +183,10 @@ def generate_launch_description():
         name='usb_cam',
         parameters=[{
             'video_device': LaunchConfiguration('camera_device'),
-            'pixel_format': 'mjpeg2rgb',
-            'brightness': 150
+            'image_width': 640,
+            'image_height': 480,
+            'pixel_format': 'raw_mjpeg',
+            'io_method': 'mmap'
         }],
         output='screen'
     )
@@ -194,6 +196,56 @@ def generate_launch_description():
         package='yolov11_pose_detector',
         executable='pose_detector_node',
         name='yolov11_pose_detector',
+        output='screen'
+    )
+
+    # I. Nav2 Keepout Filter Nodes (Restricted Stair/Hole Zones)
+    mask_yaml_file = '/home/radxa/receptionist_robot_ws/map/keepout_mask.yaml'
+    
+    filter_mask_server_node = Node(
+        package='nav2_map_server',
+        executable='map_server',
+        name='filter_mask_server',
+        output='screen',
+        parameters=[{
+            'use_sim_time': LaunchConfiguration('use_sim_time'),
+            'yaml_filename': mask_yaml_file,
+            'topic_name': '/keepout_filter_mask',
+            'frame_id': 'map'
+        }]
+    )
+
+    costmap_filter_info_server_node = Node(
+        package='nav2_map_server',
+        executable='costmap_filter_info_server',
+        name='costmap_filter_info_server',
+        output='screen',
+        parameters=[{
+            'use_sim_time': LaunchConfiguration('use_sim_time'),
+            'type': 0,
+            'filter_info_topic': '/costmap_filter_info',
+            'mask_topic': '/keepout_filter_mask',
+            'base_service_name': '/costmap_filter_info'
+        }]
+    )
+
+    costmap_filter_lifecycle_manager_node = Node(
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        name='lifecycle_manager_costmap_filters',
+        output='screen',
+        parameters=[{
+            'use_sim_time': LaunchConfiguration('use_sim_time'),
+            'autostart': True,
+            'node_names': ['filter_mask_server', 'costmap_filter_info_server']
+        }]
+    )
+
+    # J. Wi-Fi Credentials Receiver Node
+    wifi_receiver_node = Node(
+        package='wifi_receiver',
+        executable='wifi_receiver_node',
+        name='wifi_receiver_node',
         output='screen'
     )
 
@@ -241,17 +293,27 @@ def generate_launch_description():
     ld.add_action(declare_lidar_model)
     ld.add_action(declare_camera_device)
     
-    # Add Nodes
+    # Add Core Driver & Hardware Nodes Immediately
     ld.add_action(micro_ros_agent_node)
     ld.add_action(lidar_node)
     ld.add_action(robot_state_publisher_node)
     ld.add_action(robot_localization_node)
     ld.add_action(usb_cam_node)
-    ld.add_action(yolo_pose_node)
-    
-    # Add Included Launchers
+    ld.add_action(filter_mask_server_node)
+    ld.add_action(costmap_filter_info_server_node)
+    ld.add_action(costmap_filter_lifecycle_manager_node)
+    ld.add_action(wifi_receiver_node)
     ld.add_action(slam_toolbox_launch)
-    ld.add_action(nav2_navigation_launch)
+    
+    # Delayed Startup (4 seconds) for Nav2 & Perception to allow TF trees to stabilize
+    delayed_nav2_and_perception = TimerAction(
+        period=4.0,
+        actions=[
+            yolo_pose_node,
+            nav2_navigation_launch
+        ]
+    )
+    ld.add_action(delayed_nav2_and_perception)
 
     return ld
 

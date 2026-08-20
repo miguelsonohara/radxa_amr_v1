@@ -25,8 +25,9 @@ bt_navigator:
     # decrease (e.g. 5Hz) to save CPU on low-resource boards.
     bt_loop_duration: 10
 
-    # Timeout (seconds) when waiting for action servers (e.g., planner, controller) to respond.
-    default_server_timeout: 20
+    # Timeout (milliseconds/seconds) when waiting for action servers (e.g., planner, controller) to respond.
+    # Tuning: Increased to 1000ms (1.0s) to prevent false action server timeouts during high CPU load.
+    default_server_timeout: 1000
 
     # Navigation plugins loaded by the BT.
     navigators: ["navigate_to_pose", "navigate_through_poses"]
@@ -58,7 +59,8 @@ controller_server:
 
     # Timeout (seconds) allowed for costmap updates. If local costmap is stale
     # longer than this, the controller stops the robot.
-    costmap_update_timeout: 0.30
+    # Tuning: Increased to 1.0s to prevent sensor scan latency or CPU load from causing random ABORTs.
+    costmap_update_timeout: 1.0
 
     # Thresholds below which velocities are treated as zero.
     min_x_velocity_threshold: 0.05
@@ -66,8 +68,8 @@ controller_server:
     min_theta_velocity_threshold: 0.001
 
     # Time (seconds) the controller is allowed to fail (e.g. loop overrun) before triggering recoveries.
-    # Tuning: Increased to 1.5s to prevent premature aborts near obstacles.
-    failure_tolerance: 1.5
+    # Tuning: Set to 5.0s to allow smooth recovery and passage through tight spaces without premature aborts.
+    failure_tolerance: 5.0
 
     # List of plugins for checking progress and goals.
     progress_checker_plugins: ["progress_checker"]
@@ -81,125 +83,46 @@ controller_server:
     progress_checker:
       plugin: "nav2_controller::SimpleProgressChecker"
       # Robot must move at least this distance (meters) within the allowance time.
-      # Tuning: Increase if the robot gets stuck in tight places without triggering recovery.
-      required_movement_radius: 0.5
+      # Reduced to 0.10m to prevent false ABORTs when navigating narrow keepout gaps or turning slowly.
+      required_movement_radius: 0.10
       # Time allowance (seconds) to achieve the required movement radius.
-      movement_time_allowance: 10.0
+      movement_time_allowance: 30.0
 
     # Goal Checker: Checks if the robot has reached the target pose.
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
-      # Goal tolerance in meters (15cm matches differential drive hardware precision).
-      xy_goal_tolerance: 0.05
-      # Goal tolerance in heading (0.15 rad ~ 8.6 deg).
-      yaw_goal_tolerance: 0.10
-      # Latch XY goal tolerance once inside radius so turning in place does not re-trigger XY position hunting.
+      # Goal tolerance in meters (0.15m matches differential drive physical stopping precision).
+      xy_goal_tolerance: 0.15
+      # Yaw tolerance in radians (0.45 rad ~ 26 deg prevents overshoot hunting).
+      yaw_goal_tolerance: 0.45
       latch_xy_goal_tolerance: True
 
-    # FollowPath (Regulated Pure Pursuit Controller):
-    # Excellent, computationally light local planner for differential drive robots.
+    # FollowPath (Regulated Pure Pursuit Controller - Baseline from commit 1e267ef6a619a0b2c6da3a85d3c8d01bd77c5009):
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
       max_vel_x: 0.5
-      # Minimum linear velocity (m/s) (negative value allows reversing if enabled).
       min_vel_x: 0.0
-      # Maximum angular velocity (rad/s).
-      # Tuning: 0.8 rad/s (~46 deg/s) provides smooth rotational maneuverability.
-      max_vel_theta: 1.0
-      # Maximum linear acceleration (m/s^2).
+      max_vel_theta: 0.8
       max_accel_x: 0.5
-      # Maximum angular acceleration (rad/s^2).
-      max_accel_theta: 1.0
-      # Lookahead distance (meters) used to compute pure pursuit steering.
-      # Tuning: 0.5m-0.6m provides smooth, tight path tracking matching DWB.
+      max_accel_theta: 0.8
       lookahead_dist: 0.6
-      # Scale factor to increase lookahead distance proportionally with speed (seconds).
-      # lookahead_dist = lookahead_dist + (speed * lookahead_time)
       lookahead_time: 1.5
-      # Minimum lookahead distance (meters) to prevent steering instability at slow speeds.
       min_lookahead_dist: 0.3
-      # Scale factor to reduce speed when turning.
-      # Tuning: Lower values slow down the robot more aggressively on sharp turns.
       regulated_linear_scaling_parameter: 0.05
-      # If true, slows down when approaching obstacles.
       use_regulated_linear_velocity_scaling: true
-      # Scale factor to slow down when near obstacles.
       cost_scaling_dist: 0.6
-      # Minimum speed (m/s) during regulated scaling to prevent the robot from stopping entirely.
       min_approach_linear_velocity: 0.05
-      # If true, enables rotating in place to align with path heading if angular error is high.
       use_rotate_to_heading: true
-      # Distance along path (meters) to check path heading for rotate_to_heading.
       rotate_to_heading_angular_coarse_max_dist: 0.6
-      # Threshold below which the robot stops turning in place and begins driving (radians).
-      # Tuning: Set to 0.785 rad (~45 deg) to prevent endless 360-degree rotation hunting.
-      rotate_to_heading_min_angle: 0.785
-      max_angular_accel: 1.0
-      # Specific angular velocity (rad/s) used during in-place rotation to heading.
-      # Tuning: Set to 0.30 rad/s (~17 deg/s) so robot turns smoothly and stops precisely on heading without overshooting.
+      # Threshold angle (radians). Increased to 1.05 rad (60 deg) to prevent repeated stop-and-spin maneuvers on minor path turns.
+      rotate_to_heading_min_angle: 1.05
+      max_angular_accel: 0.8
+      # Rotation speed during in-place alignment (0.30 rad/s allows smooth stopping inside tolerance without momentum overshoot).
       rotate_to_heading_angular_vel: 0.30
-      # Set false to allow regulated linear scaling to handle obstacles smoothly without aborting.
       use_costmap_prevent_runaway: false
-      # Time projection (seconds) to check for collisions ahead.
       max_allowed_time_to_collision_up_to_carrot: 1.0
-      # If true, visualizes the lookahead point (carrot) in RViz.
-      transform_tolerance: 0.2
-    # FollowPath Option A: Standalone DWB Local Planner (Commented out)
-    # FollowPath:
-    #   plugin: "dwb_core::DWBLocalPlanner"
-    #   debug_trajectory_details: True
-    #   min_vel_x: 0.0
-    #   min_vel_y: 0.0
-    #   max_vel_x: 0.5
-    #   max_vel_y: 0.0
-    #   max_vel_theta: 0.5
-    #   min_vel_theta: -0.5
-    #   min_speed_xy: 0.0
-    #   max_speed_xy: 0.5
-    #   # Minimum angular speed (rad/s) during rotation.
-    #   # Tuning: Reduced to 0.1 to allow slow, precise micro-rotations when aligning to goal orientation.
-    #   min_speed_theta: 0.05
-    #   acc_lim_x: 0.5
-    #   acc_lim_y: 0.0
-    #   acc_lim_theta: 0.5
-    #   decel_lim_x: -0.5
-    #   decel_lim_y: 0.0
-    #   decel_lim_theta: -0.5
-    #   vx_samples: 20
-    #   vy_samples: 0
-    #   vtheta_samples: 20
-    #   sim_time: 1.2
-    #   linear_granularity: 0.05
-    #   angular_granularity: 0.025
-    #   xy_goal_tolerance: 0.10
-    #   path_length_tolerance: 0.2
-    #   trans_stopped_velocity: 0.25
-    #   short_circuit_trajectory_evaluation: True
-    #   limit_vel_cmd_in_traj: False
-    #   stateful: True
-    #   critics:
-    #     [
-    #       "RotateToGoal",
-    #       "Oscillation",
-    #       "BaseObstacle",
-    #       "GoalAlign",
-    #       "PathAlign",
-    #       "PathDist",
-    #       "GoalDist",
-    #     ]
-    #   BaseObstacle.scale: 0.1
-    #   PathAlign.scale: 60.0
-    #   GoalAlign.scale: 48.0
-    #   PathAlign.forward_point_distance: 0.20
-    #   GoalAlign.forward_point_distance: 0.15
-    #   PathDist.scale: 24.0
-    #   GoalDist.scale: 32.0
-    #   RotateToGoal.scale: 60.0
-    #   # Scaling factor to decelerate rotation as the robot approaches the target goal heading.
-    #   # Tuning: Increased to 5.0 so rotation slows down smoothly as the heading error approaches zero.
-    #   RotateToGoal.slowing_factor: 5.0
-    #   RotateToGoal.lookahead_time: -1.0
+      transform_tolerance: 0.5
 
 local_costmap:
   local_costmap:
@@ -208,48 +131,25 @@ local_costmap:
       # Local Costmap: Represents immediate obstacle space for local collision avoidance.
       # --------------------------------------------------------------------------
 
-      # Frequency (Hz) at which the costmap is updated with new sensor data.
       update_frequency: 10.0
-      # Frequency (Hz) at which the costmap is published to RViz.
       publish_frequency: 2.0
-
-      # Frame of reference for local navigation.
-      # Set to 'odom' so that transient errors in global localization (SLAM) do not
-      # distort the local obstacle avoidance coordinates.
       global_frame: odom
-
-      # Robot base frame.
       robot_base_frame: base_link
-      # transform_tolerance: 0.1
-      transform_tolerance: 0.2
-
-      # If true, the local costmap window moves with the robot (rolling window).
+      transform_tolerance: 0.5
       rolling_window: true
-      # Dimensions of the local costmap window in meters (3.0m x 3.0m).
       width: 5
       height: 5
-      # Costmap cell resolution in meters per cell (0.05m = 5cm).
       resolution: 0.05
+      robot_radius: 0.25
 
-      # Circular footprint radius of the robot in meters.
-      # Wheelbase is 0.30m, and chassis radius is 0.18m. With wheel width, physical width
-      # is ~0.35m. A radius of 0.20m (diameter 0.40m) provides a safe bounding circle.
-      # Tuning: Increase to give a wider safety buffer around obstacles; decrease to allow
-      # the robot to squeeze through narrow passages.
-      robot_radius: 0.30
-      # footprint: "[[0.2, 0.15], [0.2, -0.15], [-0.2, -0.15], [-0.2, 0.15]]"
-
-      # Layers loaded into the local costmap.
+      # Layers loaded into the local costmap (removed keepout_filter to prevent false lethal cost aborts).
       plugins: ["obstacle_layer", "inflation_layer"]
 
-      # Inflation Layer: Enlarges obstacles to represent safety margins.
+      # Inflation Layer: Matching commit 1e267ef6a619a0b2c6da3a85d3c8d01bd77c5009
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        # Cost scaling factor. Higher values make the cost decay more rapidly away from obstacles.
         cost_scaling_factor: 4.0
-        # Radius in meters around obstacles where cost is non-zero.
-        # Tuning: 0.35m safe margin matching robot_radius 0.25m.
-        inflation_radius: 0.45
+        inflation_radius: 0.35
 
       # Obstacle Layer: Marks obstacles detected by the LiDAR.
       obstacle_layer:
@@ -259,25 +159,16 @@ local_costmap:
         observation_sources: scan
         scan:
           topic: /scan
-          # reliability_policy: "best_effort"
-          reliability_policy: "reliable"
-          # Ignore points above this height (meters) to avoid ceiling artifacts.
+          reliability_policy: "best_effort"
           max_obstacle_height: 2.0
-          # If true, raytraces through free space to clear out outdated obstacles.
           clearing: True
-          # If true, marks detected scan points as obstacles.
           marking: True
           data_type: "LaserScan"
-          # Maximum range (meters) to clear obstacles using scan raytracing.
           raytrace_max_range: 3.5
-          # Minimum range to clear obstacles.
           raytrace_min_range: 0.0
-          # Maximum range (meters) at which to mark obstacles in the costmap.
-          # Tuning: Keep slightly lower than the sensor's physical range to avoid mapping noise.
           obstacle_max_range: 2.5
           obstacle_min_range: 0.25
 
-      # Force publishing full costmap updates instead of bounding box updates (useful for RViz).
       always_send_full_costmap: True
 
 global_costmap:
@@ -287,35 +178,22 @@ global_costmap:
       # Global Costmap: Represents the entire mapped area for global path planning.
       # --------------------------------------------------------------------------
 
-      # Frequency (Hz) at which the global costmap updates its sensor layers.
       update_frequency: 10.0
-      # Frequency (Hz) at which the global costmap is published to RViz.
       publish_frequency: 2.0
-
-      # Frame of reference for global planning (always 'map').
       global_frame: map
-      # Robot base frame.
       robot_base_frame: base_link
-      # transform_tolerance: 0.1
-      transform_tolerance: 0.2
-      # Bounding circle radius (meters). Must match the local costmap.
+      transform_tolerance: 0.5
       robot_radius: 0.25
-      # footprint: "[[0.2, 0.15], [0.2, -0.15], [-0.2, -0.15], [-0.2, 0.15]]"
       resolution: 0.05
-
-      # If true, allows the planner to plan through unmapped space.
       track_unknown_space: true
 
-      # Layers loaded into the global costmap.
+      # Layers loaded into the global costmap (removed keepout_filter to prevent false lethal cost aborts).
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
 
-      # Static Layer: Imports the map generated by SLAM Toolbox.
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
-        # Transient Local durability ensures the map server maps are synchronized correctly.
         map_subscribe_transient_local: True
 
-      # Obstacle Layer: Marks dynamic obstacles in the global map.
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
@@ -323,8 +201,7 @@ global_costmap:
         observation_sources: scan
         scan:
           topic: /scan
-          reliability_policy: "reliable"
-          # reliability_policy: "best_effort"
+          reliability_policy: "best_effort"
           max_obstacle_height: 2.0
           clearing: True
           marking: True
@@ -334,13 +211,10 @@ global_costmap:
           obstacle_max_range: 2.5
           obstacle_min_range: 0.25
 
-      # Inflation Layer: Adds safety buffer around obstacles in the global costmap.
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        # Tuning: Larger than the local costmap inflation (0.55m) to bias
-        # global plans away from walls and center them in corridors.
-        inflation_radius: 0.55
+        inflation_radius: 0.45
 
       always_send_full_costmap: True
 
@@ -351,19 +225,15 @@ planner_server:
     # --------------------------------------------------------------------------
 
     # Frequency (Hz) at which global plans are updated if target moves.
-    expected_planner_frequency: 20.0
+    # Tuning: Set to 1.0Hz (standard) to prevent planner_server CPU saturation and action server timeout aborts.
+    expected_planner_frequency: 1.0
     planner_plugins: ["GridBased"]
     costmap_update_timeout: 1.0
 
-    # GridBased (NavFn Planner): Computes A* or Dijkstra paths on the grid.
     GridBased:
       plugin: "nav2_navfn_planner::NavfnPlanner"
-      # Tolerance (meters) around the goal pose. If the exact goal is occupied,
-      # the planner finds the closest free cell within this radius.
       tolerance: 0.5
-      # If true, uses A* algorithm (faster). If false, uses Dijkstra (finds truer shortest path).
       use_astar: false
-      # Allow planning through unmapped space.
       allow_unknown: true
 
 smoother_server:
@@ -456,9 +326,9 @@ velocity_smoother:
     min_velocity: [-0.5, 0.0, -1.0]
 
     # Acceleration and Deceleration limits.
-    # Tuning: Increased theta decel to -1.5 rad/s^2 for crisp stopping upon reaching goal.
+    # Tuning: Set theta decel to -3.0 rad/s^2 for immediate rotation halt upon reaching goal tolerance without coasting overshoot.
     max_accel: [0.5, 0.0, 1.0]
-    max_decel: [-0.5, 0.0, -1.5]
+    max_decel: [-0.5, 0.0, -3.0]
 
     odom_topic: "odom"
     odom_duration: 0.1

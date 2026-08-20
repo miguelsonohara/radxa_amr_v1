@@ -18,7 +18,7 @@ from rclpy.node import Node
 from rclpy.duration import Duration
 from rclpy.action import ActionClient
 
-from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy, QoSHistoryPolicy
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy, QoSHistoryPolicy, qos_profile_sensor_data
 from sensor_msgs.msg import Image, LaserScan, CameraInfo
 from geometry_msgs.msg import PointStamped, PoseStamped
 from std_msgs.msg import String
@@ -68,7 +68,7 @@ class YoloV11PoseDetectorNode(Node):
         self.declare_parameter('input_topic', '/image_raw')
         self.declare_parameter('output_topic', '/yolov11_pose/debug_image')
         self.declare_parameter('scan_topic', '/scan')
-        self.declare_parameter('camera_info_topic', '/camera/camera_info')
+        self.declare_parameter('camera_info_topic', '/camera_info')
         self.declare_parameter('nav_action_server', '/navigate_to_pose')
         self.declare_parameter('status_topic', '/general_status')
         
@@ -91,16 +91,20 @@ class YoloV11PoseDetectorNode(Node):
         self.declare_parameter('map_frame_id', 'map')
         
         self.declare_parameter('safety_distance', 0.7)
-        self.declare_parameter('camera_mount_x', 0.18)
+        self.declare_parameter('camera_mount_x', -0.06)
         self.declare_parameter('camera_mount_y', 0.0)
-        self.declare_parameter('camera_mount_z', 0.50)
+        self.declare_parameter('camera_mount_z', 1.16)
         self.declare_parameter('camera_laser_yaw_offset', 0.0)
         
-        self.declare_parameter('person_avg_shoulder_width', 0.4)
+        self.declare_parameter('person_avg_shoulder_width', 0.38)
+
         self.declare_parameter('lidar_gate_range_margin', 0.5)
         self.declare_parameter('lidar_gate_angle_deg', 5.0)
         self.declare_parameter('goal_cooldown_sec', 6.0)
         
+        self.declare_parameter('arm_raise_head_margin', 0.15)
+        self.declare_parameter('arm_raise_elbow_margin', 0.20)
+
         self.declare_parameter('home_x', 0.0)
         self.declare_parameter('home_y', 0.0)
         self.declare_parameter('home_yaw', 0.0)
@@ -144,6 +148,9 @@ class YoloV11PoseDetectorNode(Node):
         self.lidar_gate_angle_rad = np.radians(self.get_parameter('lidar_gate_angle_deg').value)
         self.goal_cooldown_sec = self.get_parameter('goal_cooldown_sec').value
 
+        self.arm_raise_head_margin = self.get_parameter('arm_raise_head_margin').value
+        self.arm_raise_elbow_margin = self.get_parameter('arm_raise_elbow_margin').value
+
         self.home_x = self.get_parameter('home_x').value
         self.home_y = self.get_parameter('home_y').value
         self.home_yaw = self.get_parameter('home_yaw').value
@@ -163,7 +170,7 @@ class YoloV11PoseDetectorNode(Node):
         # ----------------------------------------------------------------------
         self.bridge = CvBridge()
         self.publisher = self.create_publisher(Image, output_topic, 10)
-        self.subscription = self.create_subscription(Image, input_topic, self.image_callback, 10)
+        self.subscription = self.create_subscription(Image, input_topic, self.image_callback, qos_profile_sensor_data)
         
         status_qos = QoSProfile(
             history=QoSHistoryPolicy.KEEP_LAST,
@@ -176,7 +183,7 @@ class YoloV11PoseDetectorNode(Node):
         
         self.latest_scan = None
         self.scan_subscription = self.create_subscription(LaserScan, scan_topic, self.scan_callback, 10)
-        self.info_subscription = self.create_subscription(CameraInfo, camera_info_topic, self.camera_info_callback, 10)
+        self.info_subscription = self.create_subscription(CameraInfo, camera_info_topic, self.camera_info_callback, qos_profile_sensor_data)
         
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
@@ -185,6 +192,7 @@ class YoloV11PoseDetectorNode(Node):
         self.nav_goal_handle = None
         self.navigation_status = "IDLE"
         self.last_goal_sent_time = 0.0
+        self.last_goal_failed_time = 0.0
 
         # Inter-Robot State Machine Initialization
         self.general_status = "IDLE"
@@ -250,6 +258,9 @@ class YoloV11PoseDetectorNode(Node):
     def _publish_general_status(self, status_str):
         """Updates internal status and publishes string to /general_status."""
         self.general_status = status_str
+        if status_str == "IDLE":
+            self.navigation_status = "IDLE"
+            self.target_type = "NONE"
         msg = String()
         msg.data = status_str
         self.status_pub.publish(msg)
@@ -262,18 +273,46 @@ class YoloV11PoseDetectorNode(Node):
         self.latest_scan = msg
 
     def camera_info_callback(self, msg):
-        self.f_x = msg.k[0]
-        self.f_y = msg.k[4]
-        self.c_x = msg.k[2]
-        self.c_y = msg.k[5]
+        if len(msg.k) >= 9 and msg.k[0] > 0.0:
+            if not hasattr(self, '_camera_info_received'):
+                self._camera_info_received = True
+                self.get_logger().info(
+                    f"Received valid CameraInfo intrinsics from topic: fx={msg.k[0]:.1f}, fy={msg.k[4]:.1f}, cx={msg.k[2]:.1f}, cy={msg.k[5]:.1f}"
+                )
+            self.f_x = msg.k[0]
+            self.f_y = msg.k[4]
+            self.c_x = msg.k[2]
+            self.c_y = msg.k[5]
+
+            # Extract distortion matrix D if available and precompute undistortion maps
+            if len(msg.d) >= 4 and any(abs(val) > 1e-6 for val in msg.d):
+                camera_matrix = np.array(msg.k, dtype=np.float32).reshape(3, 3)
+                dist_coeffs = np.array(msg.d, dtype=np.float32)
+                h, w = msg.height, msg.width
+                if h > 0 and w > 0 and (not hasattr(self, '_undistort_map1') or getattr(self, '_undistort_shape', None) != (w, h)):
+                    self._undistort_map1, self._undistort_map2 = cv2.initUndistortRectifyMap(
+                        camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_32FC1
+                    )
+                    self._undistort_shape = (w, h)
+                    if not hasattr(self, '_undistort_logged'):
+                        self._undistort_logged = True
+                        self.get_logger().info(f"Initialized OpenCV Undistort maps for image shape ({w}x{h}).")
+        else:
+            if not hasattr(self, '_camera_info_warned'):
+                self._camera_info_warned = True
+                self.get_logger().warn("CameraInfo topic received uncalibrated intrinsics (all zeros). Retaining default focal length fallback (fx=550.0).")
 
     def general_status_callback(self, msg):
-        """Listens to /general_status for inter-robot commands (e.g. 'COMEBACK')."""
+        """Listens to /general_status for inter-robot commands (e.g. 'COMEBACK', 'IDLE')."""
         cmd = msg.data.strip().upper()
         if cmd == "COMEBACK":
             if self.general_status != "RETURNING_HOME":
                 self.get_logger().info("Received 'COMEBACK' command! Returning to home origin pose (0,0,0)...")
                 self._send_home_navigation_goal()
+        elif cmd == "IDLE":
+            if self.general_status != "IDLE":
+                self.get_logger().info("Received 'IDLE' command! Transitioning state to IDLE.")
+                self._publish_general_status("IDLE")
 
     # ==========================================================================
     # Navigation Action Dispatch & Handlers
@@ -286,13 +325,11 @@ class YoloV11PoseDetectorNode(Node):
         self.get_logger().info("Dispatching goal target to Nav2...")
         self.navigation_status = "PLANNING"
         
-        if not self.nav_client.wait_for_server(timeout_sec=2.0):
-            self.get_logger().error("Nav2 Action Server is offline!")
+        if not self.nav_client.server_is_ready():
+            self.get_logger().warn("Nav2 Action Server is not ready yet!")
             self.navigation_status = "FAILED"
-            if self.target_type == "PERSON":
-                self.get_logger().warn("Nav2 offline while navigating to person! Automatically returning home...")
-                self._send_home_navigation_goal()
-            elif self.target_type == "HOME":
+            self.last_goal_failed_time = time.time()
+            if self.target_type == "HOME":
                 self._publish_general_status("IDLE")
                 self.target_type = "NONE"
             return
@@ -307,7 +344,32 @@ class YoloV11PoseDetectorNode(Node):
         self.send_goal_future.add_done_callback(self.nav_goal_response_callback)
 
     def _send_home_navigation_goal(self):
-        """Constructs home origin pose (0,0,0) and dispatches to Nav2."""
+        """Constructs home origin pose (0,0,0) and dispatches to Nav2 if not already at home."""
+        # Check if robot is already at home origin to prevent unnecessary movement
+        try:
+            if self.tf_buffer.can_transform(self.map_frame_id, self.base_frame_id, rclpy.time.Time()):
+                t_base = self.tf_buffer.lookup_transform(self.map_frame_id, self.base_frame_id, rclpy.time.Time())
+                robot_x = t_base.transform.translation.x
+                robot_y = t_base.transform.translation.y
+                
+                # Extract yaw angle from orientation quaternion
+                q = t_base.transform.rotation
+                siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
+                cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+                robot_yaw = np.arctan2(siny_cosp, cosy_cosp)
+                
+                dist_to_home = np.sqrt((robot_x - self.home_x)**2 + (robot_y - self.home_y)**2)
+                yaw_diff = np.abs(np.arctan2(np.sin(robot_yaw - self.home_yaw), np.cos(robot_yaw - self.home_yaw)))
+                
+                if dist_to_home <= 0.15 and yaw_diff <= 0.25:
+                    self.get_logger().info(
+                        f"Robot is already at Home origin (dist={dist_to_home:.2f}m, yaw_diff={np.degrees(yaw_diff):.1f}°). Skipping home movement."
+                    )
+                    self._publish_general_status("IDLE")
+                    return
+        except Exception as tf_ex:
+            self.get_logger().warn(f"Could not verify robot pose before returning home: {tf_ex}")
+
         self.target_type = "HOME"
         self._publish_general_status("RETURNING_HOME")
 
@@ -329,6 +391,7 @@ class YoloV11PoseDetectorNode(Node):
         if not goal_handle.accepted:
             self.get_logger().warn("Navigation target REJECTED by Nav2.")
             self.navigation_status = "FAILED"
+            self.last_goal_failed_time = time.time()
             if self.target_type == "PERSON":
                 self.get_logger().warn("Navigation to person REJECTED by Nav2! Automatically returning home...")
                 self._send_home_navigation_goal()
@@ -353,17 +416,21 @@ class YoloV11PoseDetectorNode(Node):
             self.get_logger().info("Robot successfully reached target position!")
             self.navigation_status = "ARRIVED"
             if self.target_type == "PERSON":
+                self.get_logger().info("Arrived at person! Transitioning to SERVE state and standing by for commands.")
                 self._publish_general_status("SERVE")
+                self.target_type = "NONE"
             elif self.target_type == "HOME":
                 self.get_logger().info("Arrived at home pose! Transitioning back to IDLE state.")
                 self._publish_general_status("IDLE")
                 self.target_type = "NONE"
         else:
-            self.get_logger().warn(f"Navigation failed (status={status})")
+            self.get_logger().warn(f"Navigation failed or aborted (status={status})")
             self.navigation_status = "FAILED"
+            self.last_goal_failed_time = time.time()
             if self.target_type == "PERSON":
-                self.get_logger().warn("Navigation to person FAILED! Automatically returning home...")
-                self._send_home_navigation_goal()
+                self.get_logger().warn("Navigation to person stopped/failed. Transitioning to IDLE state.")
+                self._publish_general_status("IDLE")
+                self.target_type = "NONE"
             elif self.target_type == "HOME":
                 self._publish_general_status("IDLE")
                 self.target_type = "NONE"
@@ -376,7 +443,21 @@ class YoloV11PoseDetectorNode(Node):
         start_time = time.time()
         
         try:
-            cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            if msg.encoding in ['mjpeg', '8UC1', 'jpeg', 'compressed'] or (len(msg.data) > 0 and msg.encoding not in ['bgr8', 'rgb8']):
+                np_arr = np.frombuffer(msg.data, dtype=np.uint8)
+                cv_img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            else:
+                cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+
+            if cv_img is None:
+                cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+
+            if cv_img is None:
+                self.get_logger().error("Decoded frame is None")
+                return
+
+            if hasattr(self, '_undistort_map1') and self._undistort_map1 is not None:
+                cv_img = cv2.remap(cv_img, self._undistort_map1, self._undistort_map2, cv2.INTER_LINEAR)
         except Exception as e:
             self.get_logger().error(f"Image conversion failed: {e}")
             return
@@ -395,27 +476,59 @@ class YoloV11PoseDetectorNode(Node):
 
         num_persons = len(detections)
 
-        # 2. Process Detections and Render Visualizations
+        # 2. Process Detections and Smart Multi-Person Selection
         if num_persons > 0:
-            for count, det in enumerate(detections):
-                self._draw_detection_box(annotated_img, det['box'], det['score'])
-                self._draw_skeleton(annotated_img, det['kpts'], det['kpts_conf'])
+            target_idx, target_det, raw_waving = self._select_target_person(detections)
 
-                # Process gesture and tracking for the primary (closest/highest score) person
-                if count == 0:
-                    self.gesture_active = self._check_wrist_gesture(det['kpts'], det['kpts_conf'])
-                    target_goal_pose = self._process_person_tracking(det['kpts'], det['kpts_conf'])
+            # Update temporal ring buffer with active waving status
+            self.gesture_buffer.append(raw_waving)
+            num_positive_frames = sum(self.gesture_buffer)
+            self.gesture_active = num_positive_frames >= self.gesture_trigger_thresh
+
+            # Process tracking for the selected target person
+            target_goal_pose = self._process_person_tracking(target_det['kpts'], target_det['kpts_conf'])
+
+            # Render Visualizations for all detected persons
+            for idx, det in enumerate(detections):
+                is_selected_waving = (idx == target_idx) and raw_waving
+                box_color = COLOR_EMERALD if is_selected_waving else COLOR_AMBER
+                label_prefix = "Target (Waving)" if is_selected_waving else "Person"
+                self._draw_detection_box(annotated_img, det['box'], det['score'], color=box_color, label_prefix=label_prefix)
+                self._draw_skeleton(annotated_img, det['kpts'], det['kpts_conf'])
         else:
             self.gesture_buffer.append(False)
             self.gesture_active = False
 
-        # 3. Handle Navigation Action Triggering (Only if currently IDLE or SERVE, not RETURNING_HOME or EXECUTING)
-        if self.gesture_active and target_goal_pose is not None and self.general_status != "RETURNING_HOME" and self.navigation_status != "EXECUTING":
-            cur_time = time.time()
-            if (cur_time - self.last_goal_sent_time) > self.goal_cooldown_sec:
-                self.last_goal_sent_time = cur_time
-                self.target_type = "PERSON"
-                self.send_navigation_goal(target_goal_pose)
+
+        if not self.gesture_active:
+            self.target_pose_history.clear()
+
+        cur_time = time.time()
+
+        # 3. Auto-reset FAILED status to IDLE after 5-second failure cooldown
+        if self.navigation_status == "FAILED" and (cur_time - self.last_goal_failed_time) > 5.0:
+            self.navigation_status = "IDLE"
+
+        # 4. Handle Navigation Action Triggering
+        if self.gesture_active and target_goal_pose is not None:
+            if self.general_status in ["IDLE", "SERVE"] and self.navigation_status in ["IDLE", "ARRIVED"]:
+                if (cur_time - self.last_goal_sent_time) > self.goal_cooldown_sec:
+                    if target_goal_pose == "ALREADY_THERE":
+                        self.get_logger().info("Robot is already at target safety distance. Transitioning to SERVE state.")
+                        self.navigation_status = "ARRIVED"
+                        self._publish_general_status("SERVE")
+                        self.target_type = "NONE"
+                    elif isinstance(target_goal_pose, PoseStamped):
+                        self.get_logger().info(f"Gesture triggered! Dispatching navigation goal towards person (state: {self.general_status})...")
+                        self.last_goal_sent_time = cur_time
+                        self.target_type = "PERSON"
+                        self.send_navigation_goal(target_goal_pose)
+            else:
+                if not hasattr(self, '_last_gesture_block_log') or (cur_time - self._last_gesture_block_log) > 3.0:
+                    self._last_gesture_block_log = cur_time
+                    self.get_logger().warn(
+                        f"Hand-wave gesture detected, but ignored because robot is busy in state: general_status='{self.general_status}', nav_status='{self.navigation_status}'."
+                    )
 
         # 4. Performance FPS & HUD Render
         inf_time_ms = (time.time() - start_time) * 1000.0
@@ -523,32 +636,33 @@ class YoloV11PoseDetectorNode(Node):
     # ==========================================================================
     # Visualization Helpers
     # ==========================================================================
-    def _draw_detection_box(self, img, box, score):
-        """Draws tech-style bracket corners and overlay label."""
+    def _draw_detection_box(self, img, box, score, color=COLOR_AMBER, label_prefix="Person"):
+        """Draws tech-style bracket corners and overlay label with customizable color and prefix."""
         x1, y1, x2, y2 = box
         box_w, box_h = x2 - x1, y2 - y1
         bracket_len = int(min(box_w, box_h) * 0.15)
 
         # Corners
-        cv2.line(img, (x1, y1), (x1 + bracket_len, y1), COLOR_AMBER, 2)
-        cv2.line(img, (x1, y1), (x1, y1 + bracket_len), COLOR_AMBER, 2)
-        cv2.line(img, (x1 + box_w, y1), (x1 + box_w - bracket_len, y1), COLOR_AMBER, 2)
-        cv2.line(img, (x1 + box_w, y1), (x1 + box_w, y1 + bracket_len), COLOR_AMBER, 2)
-        cv2.line(img, (x1, y1 + box_h), (x1 + bracket_len, y1 + box_h), COLOR_AMBER, 2)
-        cv2.line(img, (x1, y1 + box_h), (x1, y1 + box_h - bracket_len), COLOR_AMBER, 2)
-        cv2.line(img, (x1 + box_w, y1 + box_h), (x1 + box_w - bracket_len, y1 + box_h), COLOR_AMBER, 2)
-        cv2.line(img, (x1 + box_w, y1 + box_h), (x1 + box_w, y1 + box_h - bracket_len), COLOR_AMBER, 2)
+        cv2.line(img, (x1, y1), (x1 + bracket_len, y1), color, 2)
+        cv2.line(img, (x1, y1), (x1, y1 + bracket_len), color, 2)
+        cv2.line(img, (x1 + box_w, y1), (x1 + box_w - bracket_len, y1), color, 2)
+        cv2.line(img, (x1 + box_w, y1), (x1 + box_w, y1 + bracket_len), color, 2)
+        cv2.line(img, (x1, y1 + box_h), (x1 + bracket_len, y1 + box_h), color, 2)
+        cv2.line(img, (x1, y1 + box_h), (x1, y1 + box_h - bracket_len), color, 2)
+        cv2.line(img, (x1 + box_w, y1 + box_h), (x1 + box_w - bracket_len, y1 + box_h), color, 2)
+        cv2.line(img, (x1 + box_w, y1 + box_h), (x1 + box_w, y1 + box_h - bracket_len), color, 2)
 
         # Semi-transparent overlay
         overlay = img.copy()
-        cv2.rectangle(overlay, (x1, y1), (x2, y2), COLOR_AMBER, -1)
+        cv2.rectangle(overlay, (x1, y1), (x2, y2), color, -1)
         cv2.addWeighted(overlay, 0.1, img, 0.9, 0, img)
 
         # Label tag
-        label = f"Person: {score:.2f}"
+        label = f"{label_prefix}: {score:.2f}"
         (lw, lh), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-        cv2.rectangle(img, (x1, y1 - lh - 8), (x1 + lw + 12, y1), COLOR_AMBER, -1)
+        cv2.rectangle(img, (x1, y1 - lh - 8), (x1 + lw + 12, y1), color, -1)
         cv2.putText(img, label, (x1 + 6, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLOR_WHITE, 1, cv2.LINE_AA)
+
 
     def _draw_skeleton(self, img, kpts, kpts_conf):
         """Draws body joints and skeleton connections."""
@@ -568,11 +682,13 @@ class YoloV11PoseDetectorNode(Node):
     # ==========================================================================
     # Gesture & Tracking Logic Helpers
     # ==========================================================================
-    def _check_wrist_gesture(self, kpts, kpts_conf):
+    def _is_arm_raised(self, kpts, kpts_conf):
         """
-        Multi-condition arm geometry gesture detection with temporal frame filtering.
-        Keypoints:
-        0: Nose, 5: L_Shoulder, 6: R_Shoulder, 7: L_Elbow, 8: R_Elbow, 9: L_Wrist, 10: R_Wrist
+        Evaluates single-frame arm gesture with strict geometry criteria:
+        1. Calculates spatial scale (shoulder width) and head position (head_top_y, head_center_x).
+        2. Filters out false positives like holding/hugging head with 2 hands ("ôm đầu").
+        3. Filters out single hand resting on head/face.
+        4. Requires raised wrist to be significantly above head top, elbow, and shoulder.
         """
         l_sh_conf = kpts_conf[5] if len(kpts_conf) > 5 else 0.0
         r_sh_conf = kpts_conf[6] if len(kpts_conf) > 6 else 0.0
@@ -581,46 +697,120 @@ class YoloV11PoseDetectorNode(Node):
         l_wr_conf = kpts_conf[9] if len(kpts_conf) > 9 else 0.0
         r_wr_conf = kpts_conf[10] if len(kpts_conf) > 10 else 0.0
 
-        nose_y = kpts[0, 1] if kpts_conf[0] > self.kp_conf_threshold else None
+        # Require at least one shoulder to be valid
+        if l_sh_conf <= self.kp_conf_threshold and r_sh_conf <= self.kp_conf_threshold:
+            return False
 
-        # Check Left Arm: Wrist higher than Shoulder AND Wrist higher than Elbow
+        # Calculate spatial scale (shoulder_dist)
+        if l_sh_conf > self.kp_conf_threshold and r_sh_conf > self.kp_conf_threshold:
+            dx_sh = kpts[5, 0] - kpts[6, 0]
+            dy_sh = kpts[5, 1] - kpts[6, 1]
+            shoulder_dist = max(float(np.sqrt(dx_sh**2 + dy_sh**2)), 20.0)
+            shoulder_avg_y = (kpts[5, 1] + kpts[6, 1]) / 2.0
+            head_center_x = (kpts[5, 0] + kpts[6, 0]) / 2.0
+        elif l_sh_conf > self.kp_conf_threshold:
+            shoulder_dist = 60.0
+            shoulder_avg_y = kpts[5, 1]
+            head_center_x = kpts[5, 0]
+        else:
+            shoulder_dist = 60.0
+            shoulder_avg_y = kpts[6, 1]
+            head_center_x = kpts[6, 0]
+
+        # Calculate Head Center & Head Top (smaller y = higher in image)
+        head_kp_indices = [0, 1, 2, 3, 4]  # Nose, L_Eye, R_Eye, L_Ear, R_Ear
+        valid_head_y = [kpts[idx, 1] for idx in head_kp_indices if idx < len(kpts_conf) and kpts_conf[idx] > self.kp_conf_threshold and (kpts[idx, 0] > 1e-3 or kpts[idx, 1] > 1e-3)]
+        valid_head_x = [kpts[idx, 0] for idx in head_kp_indices if idx < len(kpts_conf) and kpts_conf[idx] > self.kp_conf_threshold and (kpts[idx, 0] > 1e-3 or kpts[idx, 1] > 1e-3)]
+
+        if len(valid_head_x) > 0:
+            head_center_x = float(np.mean(valid_head_x))
+
+        if len(valid_head_y) > 0:
+            head_top_y = min(valid_head_y) - 0.15 * shoulder_dist
+        else:
+            head_top_y = shoulder_avg_y - 0.65 * shoulder_dist
+
+        head_margin = getattr(self, 'arm_raise_head_margin', 0.15)
+        elbow_margin = getattr(self, 'arm_raise_elbow_margin', 0.20)
+
+        # ----------------------------------------------------------------------
+        # Anti-False-Positive 1: Reject 2 Hands Holding/Clutching Head ("Ôm đầu")
+        # ----------------------------------------------------------------------
+        if l_wr_conf > self.kp_conf_threshold and r_wr_conf > self.kp_conf_threshold:
+            l_wr_x, l_wr_y = kpts[9, 0], kpts[9, 1]
+            r_wr_x, r_wr_y = kpts[10, 0], kpts[10, 1]
+            l_near_head = (abs(l_wr_x - head_center_x) < 0.75 * shoulder_dist) and (l_wr_y < shoulder_avg_y + 0.2 * shoulder_dist)
+            r_near_head = (abs(r_wr_x - head_center_x) < 0.75 * shoulder_dist) and (r_wr_y < shoulder_avg_y + 0.2 * shoulder_dist)
+            if l_near_head and r_near_head:
+                return False
+
+        # ----------------------------------------------------------------------
+        # Evaluate Left Arm Raise
+        # ----------------------------------------------------------------------
         left_raised = False
         if l_wr_conf > self.kp_conf_threshold and l_sh_conf > self.kp_conf_threshold:
-            wrist_y = kpts[9, 1]
+            wrist_x, wrist_y = kpts[9, 0], kpts[9, 1]
             shoulder_y = kpts[5, 1]
-            if wrist_y < shoulder_y:
+
+            # Must be significantly above head top and shoulder
+            if wrist_y < (head_top_y - head_margin * shoulder_dist) and wrist_y < (shoulder_y - 0.60 * shoulder_dist):
                 if l_el_conf > self.kp_conf_threshold:
                     elbow_y = kpts[7, 1]
-                    if wrist_y < elbow_y:
-                        left_raised = True
+                    if wrist_y < (elbow_y - elbow_margin * shoulder_dist):
+                        # Reject if wrist is resting directly over head center
+                        if not (abs(wrist_x - head_center_x) < 0.35 * shoulder_dist and wrist_y > (head_top_y - 0.35 * shoulder_dist)):
+                            left_raised = True
                 else:
-                    if nose_y is not None and wrist_y < nose_y:
+                    if not (abs(wrist_x - head_center_x) < 0.35 * shoulder_dist and wrist_y > (head_top_y - 0.35 * shoulder_dist)):
                         left_raised = True
 
-        # Check Right Arm: Wrist higher than Shoulder AND Wrist higher than Elbow
+        # ----------------------------------------------------------------------
+        # Evaluate Right Arm Raise
+        # ----------------------------------------------------------------------
         right_raised = False
         if r_wr_conf > self.kp_conf_threshold and r_sh_conf > self.kp_conf_threshold:
-            wrist_y = kpts[10, 1]
+            wrist_x, wrist_y = kpts[10, 0], kpts[10, 1]
             shoulder_y = kpts[6, 1]
-            if wrist_y < shoulder_y:
+
+            # Must be significantly above head top and shoulder
+            if wrist_y < (head_top_y - head_margin * shoulder_dist) and wrist_y < (shoulder_y - 0.60 * shoulder_dist):
                 if r_el_conf > self.kp_conf_threshold:
                     elbow_y = kpts[8, 1]
-                    if wrist_y < elbow_y:
-                        right_raised = True
+                    if wrist_y < (elbow_y - elbow_margin * shoulder_dist):
+                        # Reject if wrist is resting directly over head center
+                        if not (abs(wrist_x - head_center_x) < 0.35 * shoulder_dist and wrist_y > (head_top_y - 0.35 * shoulder_dist)):
+                            right_raised = True
                 else:
-                    if nose_y is not None and wrist_y < nose_y:
+                    if not (abs(wrist_x - head_center_x) < 0.35 * shoulder_dist and wrist_y > (head_top_y - 0.35 * shoulder_dist)):
                         right_raised = True
 
-        raw_gesture = left_raised or right_raised
+        return left_raised or right_raised
 
-        # Append result to temporal ring buffer
-        self.gesture_buffer.append(raw_gesture)
+    def _select_target_person(self, detections):
+        """
+        Smart Multi-Person Selection:
+        Scans all detected persons, identifies candidates with raised arms,
+        and selects the candidate closest to the camera frame center (c_x).
+        Returns: (target_index, target_detection_dict, is_any_person_waving)
+        """
+        waving_candidates = []
+        for idx, det in enumerate(detections):
+            if self._is_arm_raised(det['kpts'], det['kpts_conf']):
+                box = det['box']
+                center_x = (box[0] + box[2]) / 2.0
+                dist_to_center = abs(center_x - self.c_x)
+                waving_candidates.append((dist_to_center, idx, det))
 
-        # Triggered if at least gesture_trigger_thresh frames out of gesture_buffer_size detected gesture
-        num_positive_frames = sum(self.gesture_buffer)
-        is_triggered = num_positive_frames >= self.gesture_trigger_thresh
+        if len(waving_candidates) > 0:
+            # Sort by proximity to center of FOV
+            waving_candidates.sort(key=lambda item: item[0])
+            best_idx = waving_candidates[0][1]
+            best_det = waving_candidates[0][2]
+            return best_idx, best_det, True
 
-        return is_triggered
+        # Fallback to primary detection if no arm raised
+        return 0, detections[0], False
+
 
     def _process_person_tracking(self, kpts, kpts_conf):
         """Estimates distance, fuses LiDAR range data, and projects Nav2 target pose with moving average smoothing."""
@@ -641,17 +831,27 @@ class YoloV11PoseDetectorNode(Node):
         Z_est = (self.person_shoulder_width * self.f_x) / d_pixel
         Z_est = float(np.clip(Z_est, 0.8, 8.0))
 
+        # Calculate Torso Centroid using Shoulders (5, 6) and Hips (11, 12) if available
         shoulder_center_u = (left_shoulder[0] + right_shoulder[0]) / 2.0
         shoulder_center_v = (left_shoulder[1] + right_shoulder[1]) / 2.0
 
+        if len(kpts_conf) > 12 and kpts_conf[11] > self.kp_conf_threshold and kpts_conf[12] > self.kp_conf_threshold:
+            hip_center_u = (kpts[11, 0] + kpts[12, 0]) / 2.0
+            hip_center_v = (kpts[11, 1] + kpts[12, 1]) / 2.0
+            body_center_u = (shoulder_center_u + hip_center_u) / 2.0
+            body_center_v = (shoulder_center_v + hip_center_v) / 2.0
+        else:
+            body_center_u = shoulder_center_u
+            body_center_v = shoulder_center_v
+
         # 2. LiDAR Ray-Casting & Smart Hybrid Window Gating
-        d_lidar = self._fuse_lidar_distance(shoulder_center_u, shoulder_center_v, Z_est)
+        d_lidar = self._fuse_lidar_distance(body_center_u, body_center_v, Z_est)
         self.fused_distance = d_lidar
 
         # 3. 3D Coordinates in Camera Optical Frame
         Z_cam = d_lidar
-        X_cam = Z_cam * (shoulder_center_u - self.c_x) / self.f_x
-        Y_cam = Z_cam * (shoulder_center_v - self.c_y) / self.f_y
+        X_cam = Z_cam * (body_center_u - self.c_x) / self.f_x
+        Y_cam = Z_cam * (body_center_v - self.c_y) / self.f_y
 
         # 4. Map Frame Transformation
         target_coords = self._transform_camera_to_map(X_cam, Y_cam, Z_cam)
@@ -665,6 +865,7 @@ class YoloV11PoseDetectorNode(Node):
 
         # 6. Safety Offset Goal Pose Generation
         return self._generate_safety_goal_pose(avg_x, avg_y)
+
 
     def _fuse_lidar_distance(self, shoulder_center_u, shoulder_center_v, Z_est):
         """
@@ -777,13 +978,16 @@ class YoloV11PoseDetectorNode(Node):
             dy_map = target_y_map - robot_y
             dist_to_target = np.sqrt(dx_map**2 + dy_map**2)
 
-            if dist_to_target > self.safety_distance:
-                ratio = (dist_to_target - self.safety_distance) / dist_to_target
-                goal_x = robot_x + dx_map * ratio
-                goal_y = robot_y + dy_map * ratio
-            else:
-                goal_x = robot_x
-                goal_y = robot_y
+            if dist_to_target <= (self.safety_distance + 0.10):
+                return "ALREADY_THERE"
+
+            ratio = (dist_to_target - self.safety_distance) / dist_to_target
+            goal_x = robot_x + dx_map * ratio
+            goal_y = robot_y + dy_map * ratio
+
+            dist_to_goal = np.sqrt((goal_x - robot_x)**2 + (goal_y - robot_y)**2)
+            if dist_to_goal < 0.20:
+                return "ALREADY_THERE"
 
             goal_yaw = np.arctan2(dy_map, dx_map)
             q_z = np.sin(goal_yaw / 2.0)
