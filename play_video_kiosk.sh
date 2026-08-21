@@ -23,9 +23,10 @@ xset -dpms 2>/dev/null || true
 # Remove stale IPC socket if exists
 rm -f "$IPC_SOCKET"
 
-# Run MPV with VPU hardware decoding and minimal GPU shader overhead
+# Run MPV with rock-solid CPU decoding and minimal GPU shader overhead
 exec /usr/bin/mpv \
-    --hwdec=v4l2m2m-copy \
+    --hwdec=no \
+    --vd-lavc-threads=4 \
     --vo=gpu \
     --gpu-context=x11egl \
     --profile=fast \
@@ -35,6 +36,7 @@ exec /usr/bin/mpv \
     --dither-depth=no \
     --correct-downscaling=no \
     --sigmoid-upscaling=no \
+    --x11-bypass-compositor=yes \
     --force-window=immediate \
     --fullscreen \
     --fs-screen=0 \
