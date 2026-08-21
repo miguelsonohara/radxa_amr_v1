@@ -42,28 +42,17 @@ ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p stamped:=true
 
 # Service
+## Robot Bringup:
 sudo systemctl daemon-reload && sudo systemctl enable --now robot_bringup.service
+sudo systemctl restart robot_bringup.service
+sudo systemctl stop robot_bringup.service
+sudo systemctl status robot_bringup.service
 
+## Video Kiosk:
+sudo systemctl daemon-reload && sudo systemctl enable --now play_video.service
+sudo systemctl restart play_video.service
+sudo systemctl stop play_video.service
+sudo systemctl status play_video.service
+
+# Kill all ROS nodes manually:
 bash -c "pkill -9 -f bringup; pkill -9 -f ros2; pkill -9 -f nav2; pkill -9 -f slam_toolbox; pkill -9 -f pose_detector; pkill -9 -f usb_cam; pkill -9 -f sllidar; pkill -9 -f micro_ros; sleep 2; ps aux | grep -E 'ros|nav2|yolo'"
-
-# Video Kiosk (GDM3 / X11 Session + MPV):
-## Service quản lý: gdm3.service (chạy session receptionist-kiosk.desktop -> kiosk-session.sh)
-
-## Restart video (kiosk-session sẽ tự bật lại ngay lập tức):
-pkill -f "/usr/bin/mpv"
-
-## Stop video & kiosk loop hoàn toàn:
-pkill -f "kiosk-session.sh"; pkill -f "/usr/bin/mpv"
-
-## Start lại video kiosk thủ công:
-DISPLAY=:0 /home/radxa/receptionist_robot_ws/play_video_kiosk.sh &
-# Hoặc restart toàn bộ session GDM: sudo systemctl restart gdm3
-
-## Kiểm tra trạng thái video đang phát:
-python3 -c 'import socket, json; s=socket.socket(socket.AF_UNIX, socket.SOCK_STREAM); s.connect("/tmp/mpvsocket"); s.sendall(json.dumps({"command": ["get_property", "time-pos"]}).encode()+b"\n"); print("Time:", s.recv(1024).decode().strip()); s.close()'
-
-## Pause / Resume video qua IPC socket:
-python3 -c 'import socket, json; s=socket.socket(socket.AF_UNIX, socket.SOCK_STREAM); s.connect("/tmp/mpvsocket"); s.sendall(json.dumps({"command": ["cycle", "pause"]}).encode()+b"\n"); print(s.recv(1024).decode().strip()); s.close()'
-
-## Đổi video động không chớp màn hình:
-python3 -c 'import socket, json, sys; video=sys.argv[1] if len(sys.argv)>1 else "/home/radxa/receptionist_robot_ws/xoaylai180.mp4"; s=socket.socket(socket.AF_UNIX, socket.SOCK_STREAM); s.connect("/tmp/mpvsocket"); s.sendall(json.dumps({"command": ["loadfile", video]}).encode()+b"\n"); print(s.recv(1024).decode().strip()); s.close()' /home/radxa/receptionist_robot_ws/xoaylai180.mp4

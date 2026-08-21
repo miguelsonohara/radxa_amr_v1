@@ -16,14 +16,11 @@ xset -dpms 2>/dev/null || true
 # Clean exit handler
 cleanup() {
     pkill -P $$ 2>/dev/null || true
-    pkill -f "/usr/bin/mpv" 2>/dev/null || true
     exit 0
 }
 trap cleanup SIGINT SIGTERM
 
-# Run video playback kiosk loop
-while true; do
-    /home/radxa/receptionist_robot_ws/play_video_kiosk.sh
-    sleep 0.5
-done
+# Keep X11 session alive indefinitely so play_video.service can render on :0
+exec sleep infinity
+
 
