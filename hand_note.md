@@ -41,18 +41,18 @@ ros2 run tf2_tools view_frames
 ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p stamped:=true
 
-# Service
+# Service (User Services - Không cần sudo)
 ## Robot Bringup:
-sudo systemctl daemon-reload && sudo systemctl enable --now robot_bringup.service
-sudo systemctl restart robot_bringup.service
-sudo systemctl stop robot_bringup.service
-sudo systemctl status robot_bringup.service
+systemctl --user daemon-reload && systemctl --user enable --now robot_bringup.service
+systemctl --user restart robot_bringup.service
+systemctl --user stop robot_bringup.service
+systemctl --user status robot_bringup.service
 
 ## Video Kiosk:
-sudo systemctl daemon-reload && sudo systemctl enable --now play_video.service
-sudo systemctl restart play_video.service
-sudo systemctl stop play_video.service
-sudo systemctl status play_video.service
+systemctl --user daemon-reload && systemctl --user enable --now play_video.service
+systemctl --user restart play_video.service
+systemctl --user stop play_video.service
+systemctl --user status play_video.service
 
 # Kill all ROS nodes manually:
 bash -c "pkill -9 -f bringup; pkill -9 -f ros2; pkill -9 -f nav2; pkill -9 -f slam_toolbox; pkill -9 -f pose_detector; pkill -9 -f usb_cam; pkill -9 -f sllidar; pkill -9 -f micro_ros; sleep 2; ps aux | grep -E 'ros|nav2|yolo'"
