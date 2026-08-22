@@ -30,12 +30,37 @@
   <xacro:property name="caster_offset_x" value="0.12" />
   <xacro:property name="caster_mass" value="0.2" />
 
-  <!-- Lidar mount offsets -->
-  <!-- Placed near the front edge of the robot and elevated on a mast or shelf -->
-  <xacro:property name="lidar_offset_x" value="-0.01" />
-  <xacro:property name="lidar_offset_y" value="0.0" />
-  <xacro:property name="lidar_offset_z" value="0.16" />
+  <!-- ==================================================================== -->
+  <!-- SENSOR MOUNTING COORDINATES & OFFSETS (LiDAR, IMU, CAMERA)          -->
+  <!-- ==================================================================== -->
+  <!-- ROS COORDINATE CONVENTION (REP-103):
+       Coordinate Origin (0, 0, 0) is "base_link" = MIDPOINT OF THE WHEEL AXLE.
+       - X axis (meters): Positive (+) = FORWARD | Negative (-) = BACKWARD
+       - Y axis (meters): Positive (+) = LEFT    | Negative (-) = RIGHT
+       - Z axis (meters): Positive (+) = UP      | Negative (-) = DOWN
+       - Rotation rpy (radians):
+           * roll  : Rotation about X-axis (tilt left/right)
+           * pitch : Rotation about Y-axis (tilt nose up/down)
+           * yaw   : Rotation about Z-axis (heading / turning left/right).
+                     0 = Facing forward; pi (3.14159) = Facing backwards;
+                     pi/2 (1.5708) = Facing left; -pi/2 (-1.5708) = Facing right.
+  -->
+
+  <!-- 1. LiDAR Sensor Offsets (Laser Scanner) -->
+  <!-- Physical offset measured from wheel axle center to LiDAR scanning center -->
+  <xacro:property name="lidar_offset_x" value="0.0" /> <!-- meters: Forward (+) or Backward (-) from wheel axle center -->
+  <xacro:property name="lidar_offset_y" value="0.0" />  <!-- meters: Left (+) or Right (-) -->
+  <xacro:property name="lidar_offset_z" value="0.16" /> <!-- meters: Height from wheel axle center to LiDAR scan plane -->
+  <xacro:property name="lidar_offset_yaw" value="0.0" /><!-- radians: Yaw rotation (e.g. 3.14159 if mounted facing backwards) -->
   <xacro:property name="lidar_mass" value="0.25" />
+
+  <!-- 2. IMU Sensor Offsets (Inertial Measurement Unit) -->
+  <!-- Physical position of IMU chip relative to wheel axle center -->
+  <xacro:property name="imu_offset_x" value="0.0" /> <!-- meters: IMU position along X axis -->
+  <xacro:property name="imu_offset_y" value="0.0" />  <!-- meters: IMU position along Y axis -->
+  <xacro:property name="imu_offset_z" value="0.10" /> <!-- meters: Height of IMU along Z axis -->
+  <xacro:property name="imu_offset_yaw" value="0.0" /><!-- radians: Mounting yaw orientation of IMU -->
+  <!-- ==================================================================== -->
 
   <!-- ==================================================================== -->
   <!-- MATERIALS (Colors for visualization in RViz)                         -->
@@ -230,12 +255,17 @@
     <origin xyz="-${caster_offset_x} 0 ${-(wheel_radius - caster_radius)}" rpy="0 0 0" />
   </joint>
 
-  <!-- 8. Lidar Sensor (frame_id = laser) -->
+  <!-- ==================================================================== -->
+  <!-- 8. Lidar Sensor (frame_id = laser)                                   -->
+  <!-- ==================================================================== -->
+  <!-- LINK "laser": 2D laser scanner sensor link.
+       NOTE: Origin for visual & collision is set to (0,0,0) so the geometry center
+       matches the measurement origin of frame "laser". -->
   <link name="laser">
     <visual>
-      <origin xyz="-0.1 0 0.17" rpy="0 0 0" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <!-- Standard puck cylinder shape for RPLidar A1/A2 -->
+        <!-- Cylindrical puck representing LiDAR sensor (HCLiDAR / RPLidar) -->
         <cylinder radius="0.035" length="0.04" />
       </geometry>
       <material name="lidar_material" />
@@ -249,16 +279,24 @@
     <xacro:cylinder_inertia mass="${lidar_mass}" r="0.035" h="0.04" />
   </link>
 
+  <!-- JOINT "laser_joint": Fixed transform between base_link and laser frame.
+       Critical for SLAM scan matching and Nav2 costmap obstacle placement.
+       - origin xyz: [x = forward(+)/backward(-), y = left(+)/right(-), z = up(+)/down(-)]
+       - origin rpy: [roll, pitch, yaw] (yaw = pi if mounted facing backward)
+       (Easily tuned via <xacro:property name="lidar_offset_..."/> at the top of this file) -->
   <joint name="laser_joint" type="fixed">
     <parent link="base_link" />
     <child link="laser" />
-    <origin xyz="${lidar_offset_x} ${lidar_offset_y} ${lidar_offset_z}" rpy="0 0 0" />
+    <origin xyz="${lidar_offset_x} ${lidar_offset_y} ${lidar_offset_z}" rpy="0 0 ${lidar_offset_yaw}" />
   </joint>
 
-  <!-- 9. IMU Sensor (frame_id = imu_link) -->
+  <!-- ==================================================================== -->
+  <!-- 9. IMU Sensor (frame_id = imu_link)                                  -->
+  <!-- ==================================================================== -->
+  <!-- LINK "imu_link": 6-DOF / 9-DOF inertial measurement unit module -->
   <link name="imu_link">
     <visual>
-      <origin xyz="0.01 0 0.1" rpy="0 0 0" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
         <box size="0.02 0.02 0.005" />
       </geometry>
@@ -266,10 +304,13 @@
     </visual>
   </link>
 
+  <!-- JOINT "imu_joint": Fixed transform between base_link and imu_link.
+       Used by EKF (robot_localization) to fuse angular velocity and linear acceleration.
+       (Easily tuned via <xacro:property name="imu_offset_..."/> at the top of this file) -->
   <joint name="imu_joint" type="fixed">
     <parent link="base_link" />
     <child link="imu_link" />
-    <origin xyz="0.01 0.0 0.10" rpy="0 0 0" />
+    <origin xyz="${imu_offset_x} ${imu_offset_y} ${imu_offset_z}" rpy="0 0 ${imu_offset_yaw}" />
   </joint>
 
   <!-- 10. USB Camera (frame_id = camera_link & camera_color_optical_frame) -->

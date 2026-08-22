@@ -20,6 +20,29 @@ ESP32_DEV="/dev/serial/by-id/usb-1a86_USB_Single_Serial_5C36140582-if00"
 LIDAR_DEV="/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_fcefc1eb0664ef118210e1a9c169b110-if00-port0"
 CAM_DEV="/dev/my_camera"
 
+# ------------------------------------------------------------------------------
+# 1. Wait for NTP Time Synchronization
+# Prevents clock skew / timestamp lag between ESP32 micro-ROS and host Nav2 stack
+# ------------------------------------------------------------------------------
+wait_for_time_sync() {
+    local timeout_s="${1:-45}"
+    local elapsed=0
+    echo "[bringup] Waiting for NTP system clock synchronization..."
+    while [ "$elapsed" -lt "$timeout_s" ]; do
+        if [ "$(timedatectl show -p NTPSynchronized --value 2>/dev/null)" = "yes" ]; then
+            echo "[bringup] System clock synchronized via NTP (current time: $(date))"
+            return 0
+        fi
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+    echo "[bringup] WARNING: NTP sync timeout after ${timeout_s}s — proceeding with current clock: $(date)"
+    return 1
+}
+
+# ------------------------------------------------------------------------------
+# 2. Wait for Hardware Serial & Video Devices
+# ------------------------------------------------------------------------------
 wait_for_dev() {
     local path="$1"
     local label="$2"
@@ -38,10 +61,21 @@ wait_for_dev() {
     return 1
 }
 
+# Run synchronization and device discovery
+wait_for_time_sync 45
 wait_for_dev "$ESP32_DEV" "ESP32 (micro-ROS)" 90
 wait_for_dev "$LIDAR_DEV" "LiDAR" 90
 wait_for_dev "$CAM_DEV" "USB camera" 30
 
+# Reset ESP32 via DTR/RTS toggle to guarantee clean micro-ROS handshake with accurate host time
+if [ -e "$ESP32_DEV" ]; then
+    echo "[bringup] Pulsing DTR/RTS to restart ESP32 for fresh time sync..."
+    python3 -c "import serial, time; s=serial.Serial('$ESP32_DEV', 921600); s.dtr=False; s.rts=True; time.sleep(0.1); s.dtr=True; s.rts=False; time.sleep(0.3); s.close()" 2>/dev/null || true
+fi
+
+# ------------------------------------------------------------------------------
+# 3. Launch Main Robot Bringup Stack
+# ------------------------------------------------------------------------------
 ros2 launch receptionist_robot_bringup bringup.launch.py \
     serial_port:="$ESP32_DEV" \
     lidar_port:="$LIDAR_DEV" \

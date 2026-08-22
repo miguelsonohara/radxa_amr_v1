@@ -1,6 +1,6 @@
 [Unit]
 Description=Receptionist Video Kiosk Loop
-After=graphical.target display-manager.service gdm3.service
+After=graphical.target display-manager.service gdm3.service robot_bringup.service
 Wants=graphical.target
 
 [Service]
@@ -14,6 +14,14 @@ Restart=always
 RestartSec=2
 KillMode=mixed
 TimeoutStopSec=5
+
+# The kiosk must never preempt the Nav2 control loop or the micro-ROS serial
+# reader. Confine it to the four little cores (capacity 382) and give it a
+# token share, leaving the big/prime cores (4-7) to the robot stack.
+CPUAffinity=0-3
+CPUWeight=20
+IOWeight=20
+Nice=10
 
 [Install]
 WantedBy=graphical.target

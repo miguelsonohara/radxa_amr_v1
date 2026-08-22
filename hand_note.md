@@ -41,18 +41,41 @@ ros2 run tf2_tools view_frames
 ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p stamped:=true
 
-# Service (User Services - Không cần sudo)
+# Service (System Services - cần sudo)
+# Cả hai đều là unit cấp system trong /etc/systemd/system/.
+# KHÔNG dùng `systemctl --user` nữa: bản user cũ đã bị xóa vì trùng với bản
+# system, hai bản cùng chạy sẽ tạo 2 tiến trình mpv tranh nhau /tmp/mpvsocket.
+# Sau khi sửa file .service trong repo thì phải cài lại:
+sudo install -m 644 play_video.service /etc/systemd/system/play_video.service
+sudo install -m 644 robot_bringup.service /etc/systemd/system/robot_bringup.service
+sudo systemctl daemon-reload
+
 ## Robot Bringup:
-systemctl --user daemon-reload && systemctl --user enable --now robot_bringup.service
-systemctl --user restart robot_bringup.service
-systemctl --user stop robot_bringup.service
-systemctl --user status robot_bringup.service
+sudo systemctl enable --now robot_bringup.service
+sudo systemctl restart robot_bringup.service
+sudo systemctl stop robot_bringup.service
+systemctl status robot_bringup.service
+journalctl -u robot_bringup.service -f
 
 ## Video Kiosk:
-systemctl --user daemon-reload && systemctl --user enable --now play_video.service
-systemctl --user restart play_video.service
-systemctl --user stop play_video.service
-systemctl --user status play_video.service
+sudo systemctl enable --now play_video.service
+sudo systemctl restart play_video.service
+sudo systemctl stop play_video.service
+systemctl status play_video.service
+journalctl -u play_video.service -f
+
+## Ưu tiên CPU (chống robot cà giật)
+# Kiosk bị ghim vào 4 core nhỏ (0-3) + nice 10; bringup chạy nice -5 và được
+# scheduler đẩy lên core lớn (4-7). Kiểm tra lại khi có nghi vấn:
+grep Cpus_allowed_list /proc/$(pgrep -x mpv)/status     # phải là 0-3
+ps -o pid,ni,psr,comm -p $(pgrep -f micro_ros_agent)    # nice phải là -5
+
+## Kiểm tra kiosk có dùng giải mã cứng Venus không (bắt buộc, đừng để về CPU)
+# playback-time phải tăng dần và core-idle phải là False.
+echo '{"command":["get_property","hwdec-current"]}' | python3 -c "
+import json,socket,sys
+s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM);s.connect('/tmp/mpvsocket')
+s.sendall(sys.stdin.buffer.read());print(s.recv(4096).decode())"
 
 # Kill all ROS nodes manually:
 bash -c "pkill -9 -f bringup; pkill -9 -f ros2; pkill -9 -f nav2; pkill -9 -f slam_toolbox; pkill -9 -f pose_detector; pkill -9 -f usb_cam; pkill -9 -f sllidar; pkill -9 -f micro_ros; sleep 2; ps aux | grep -E 'ros|nav2|yolo'"

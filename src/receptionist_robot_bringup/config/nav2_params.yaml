@@ -101,7 +101,7 @@ controller_server:
     # FollowPath (Regulated Pure Pursuit Controller - Baseline from commit 1e267ef6a619a0b2c6da3a85d3c8d01bd77c5009):
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
-      max_vel_x: 0.5
+      max_vel_x: 0.4
       min_vel_x: 0.0
       max_vel_theta: 0.8
       max_accel_x: 0.5
@@ -328,7 +328,7 @@ velocity_smoother:
     # Acceleration and Deceleration limits.
     # Tuning: Set theta decel to -3.0 rad/s^2 for immediate rotation halt upon reaching goal tolerance without coasting overshoot.
     max_accel: [0.5, 0.0, 1.0]
-    max_decel: [-0.5, 0.0, -3.0]
+    max_decel: [-1.0, 0.0, -3.0]
 
     odom_topic: "odom"
     odom_duration: 0.1

@@ -1,6 +1,7 @@
 [Unit]
 Description=Receptionist robot ROS 2 bringup (Nav2, SLAM, LiDAR, ESP32, camera, YOLO)
-After=network.target
+After=network-online.target time-sync.target
+Wants=network-online.target
 StartLimitIntervalSec=0
 
 [Service]
@@ -15,5 +16,13 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=robot-bringup
 
+# Control-loop latency comes first: outrank the kiosk and every other
+# best-effort service so the micro-ROS serial reader is never preempted.
+CPUWeight=10000
+IOWeight=1000
+Nice=-5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=0
+
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target
