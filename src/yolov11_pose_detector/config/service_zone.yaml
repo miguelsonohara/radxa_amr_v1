@@ -1,0 +1,9 @@
+# Service zone in map frame (AABB rectangle).
+# Measure 4 corners on RViz/map and update placeholders below.
+service_zone:
+  frame_id: map
+  x_min: -2.0
+  y_min: -2.0
+  x_max: 2.0
+  y_max: 2.0
+  epsilon: 0.0

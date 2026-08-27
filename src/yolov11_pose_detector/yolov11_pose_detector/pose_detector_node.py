@@ -20,14 +20,33 @@ from rclpy.action import ActionClient
 
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy, QoSHistoryPolicy, qos_profile_sensor_data
 from sensor_msgs.msg import Image, LaserScan, CameraInfo
-from geometry_msgs.msg import PointStamped, PoseStamped
-from std_msgs.msg import String
+from geometry_msgs.msg import PointStamped, PoseStamped, PoseArray, Pose
+from std_msgs.msg import Bool, String
 from nav2_msgs.action import NavigateToPose
 
 import tf2_ros
 import tf2_geometry_msgs
 from cv_bridge import CvBridge
 from ultralytics import YOLO
+import yaml
+
+from yolov11_pose_detector.lidar_endpoint import (
+    ImageSideHint,
+    LidarPersonTracker,
+    Phase1EndpointEngine,
+    Phase1Params,
+    Phase2Params,
+    ScanLatch,
+    TriggerAssociator,
+    TriggerEvent,
+    classify_track_side,
+    compute_safety_goal,
+    load_zone_from_yaml,
+    update_lock_state,
+    ClusterFilterParams,
+)
+from yolov11_pose_detector.lidar_endpoint.scan_utils import laser_scan_to_points, transform_points_to_map
+from yolov11_pose_detector.lidar_endpoint.zone import filter_points_in_zone
 
 try:
     import onnxruntime as ort
@@ -71,6 +90,12 @@ class YoloV11PoseDetectorNode(Node):
         self.declare_parameter('camera_info_topic', '/camera_info')
         self.declare_parameter('nav_action_server', '/navigate_to_pose')
         self.declare_parameter('status_topic', '/general_status')
+        # True: YOLO+/scan publishes /person_goal for straight_line_controller.
+        # False: legacy Nav2 NavigateToPose action client.
+        self.declare_parameter('use_straight_nav', True)
+        self.declare_parameter('person_goal_topic', '/person_goal')
+        self.declare_parameter('person_goal_cancel_topic', '/person_goal/cancel')
+        self.declare_parameter('straight_nav_status_topic', '/straight_nav/status')
         
         self.declare_parameter('workspace_dir', '/home/radxa/receptionist_robot_ws')
         self.declare_parameter('model_name', 'yolo11n-pose.onnx')
@@ -104,6 +129,10 @@ class YoloV11PoseDetectorNode(Node):
         self.declare_parameter('lidar_gate_angle_deg', 20.0)
         self.declare_parameter('lidar_search_half_angle_deg', 20.0)
         self.declare_parameter('goal_cooldown_sec', 6.0)
+        self.declare_parameter('use_lidar_native_endpoint', False)
+        self.declare_parameter('endpoint_phase', 1)
+        self.declare_parameter('service_zone_config', '')
+        self.declare_parameter('lidar_endpoint_config', '')
         
         self.declare_parameter('arm_raise_head_margin', 0.15)
         self.declare_parameter('arm_raise_elbow_margin', 0.20)
@@ -158,6 +187,10 @@ class YoloV11PoseDetectorNode(Node):
         self.lidar_search_half_angle_rad = float(np.radians(max(search_angle_deg, gate_angle_deg)))
         self.lidar_gate_angle_rad = self.lidar_search_half_angle_rad
         self.goal_cooldown_sec = self.get_parameter('goal_cooldown_sec').value
+        self.use_lidar_native_endpoint = bool(self.get_parameter('use_lidar_native_endpoint').value)
+        self.endpoint_phase = int(self.get_parameter('endpoint_phase').value)
+        self.service_zone_config = str(self.get_parameter('service_zone_config').value)
+        self.lidar_endpoint_config = str(self.get_parameter('lidar_endpoint_config').value)
 
         self.arm_raise_head_margin = self.get_parameter('arm_raise_head_margin').value
         self.arm_raise_elbow_margin = self.get_parameter('arm_raise_elbow_margin').value
@@ -198,8 +231,26 @@ class YoloV11PoseDetectorNode(Node):
         
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
-        
-        self.nav_client = ActionClient(self, NavigateToPose, nav_action_server)
+
+        self.use_straight_nav = bool(self.get_parameter('use_straight_nav').value)
+        person_goal_topic = self.get_parameter('person_goal_topic').value
+        person_goal_cancel_topic = self.get_parameter('person_goal_cancel_topic').value
+        straight_nav_status_topic = self.get_parameter('straight_nav_status_topic').value
+
+        self.nav_client = None
+        self.person_goal_pub = None
+        self.person_goal_cancel_pub = None
+        if self.use_straight_nav:
+            self.person_goal_pub = self.create_publisher(PoseStamped, person_goal_topic, 10)
+            self.person_goal_cancel_pub = self.create_publisher(Bool, person_goal_cancel_topic, 10)
+            self.create_subscription(String, straight_nav_status_topic, self._straight_nav_status_cb, 10)
+            self.get_logger().info(
+                f"Straight-nav mode: YOLO+/scan -> {person_goal_topic}; "
+                f"/scan obstacles handled by straight_line_controller"
+            )
+        else:
+            self.nav_client = ActionClient(self, NavigateToPose, nav_action_server)
+
         self.nav_goal_handle = None
         self.navigation_status = "IDLE"
         self.last_goal_sent_time = 0.0
@@ -221,6 +272,27 @@ class YoloV11PoseDetectorNode(Node):
 
         self.gesture_buffer = deque(maxlen=gesture_buf_size)
         self.target_pose_history = deque(maxlen=smooth_buf_size)
+        self.bbox_center_history = deque(maxlen=5)
+
+        self.scan_latch = None
+        self.phase1_engine = None
+        self.phase2_tracker = None
+        self.phase2_associator = None
+        self.phase2_params = None
+        self.current_zone = None
+        self.locked_target = None
+        self.locked_goal_pose = None
+        self.prev_trigger_active = False
+        self.last_target_detection = None
+        self.last_tracks = []
+        self.phase1_latch_dt_sec = 0.15
+        self.phase1_scans_to_merge = 3
+        self.motion_v_bbox_max = 35.0
+        self.safety_epsilon = 0.1
+        self._load_lidar_native_config()
+
+        self.tracks_pub = self.create_publisher(PoseArray, '/lidar_people/tracks', 10)
+        self.locked_pub = self.create_publisher(String, '/lidar_people/locked', 10)
 
         # Visual Telemetry Stats
         self.prev_time = 0.0
@@ -277,11 +349,221 @@ class YoloV11PoseDetectorNode(Node):
         self.status_pub.publish(msg)
         self.get_logger().info(f"Updated and published /general_status -> '{status_str}'")
 
+    def _load_lidar_native_config(self):
+        if not self.use_lidar_native_endpoint:
+            return
+        if not self.service_zone_config or not self.lidar_endpoint_config:
+            self.get_logger().warn("LiDAR-native enabled but config path is empty. Falling back to legacy mode.")
+            self.use_lidar_native_endpoint = False
+            return
+        try:
+            zone = load_zone_from_yaml(self.service_zone_config)
+            with open(self.lidar_endpoint_config, "r", encoding="utf-8") as fh:
+                data = yaml.safe_load(fh) or {}
+            root = data.get("lidar_endpoint", data)
+            p1 = root.get("phase1", {})
+            p2 = root.get("phase2", {})
+            trig = root.get("trigger", {})
+            self.endpoint_phase = int(root.get("endpoint_phase", self.endpoint_phase))
+            self.goal_cooldown_sec = float(trig.get("goal_cooldown_sec", self.goal_cooldown_sec))
+            self.motion_v_bbox_max = float(trig.get("motion_v_bbox_max", self.motion_v_bbox_max))
+            self.gesture_buffer = deque(
+                maxlen=int(trig.get("gesture_buffer_size", self.gesture_buffer.maxlen))
+            )
+            self.gesture_trigger_thresh = int(trig.get("gesture_trigger_threshold", self.gesture_trigger_thresh))
+            self.bbox_center_history = deque(maxlen=int(trig.get("motion_window", self.bbox_center_history.maxlen)))
+            params = Phase1Params(
+                cluster_eps=float(p1.get("cluster_eps", 0.35)),
+                n_min=int(p1.get("n_min", 3)),
+                width_min=float(p1.get("width_min", 0.12)),
+                width_max=float(p1.get("width_max", 0.9)),
+                range_min=float(p1.get("range_min", 0.4)),
+                range_max=float(p1.get("range_max", 7.5)),
+                safety_distance=float(p1.get("safety_distance", self.safety_distance)),
+                safety_epsilon=float(p1.get("safety_epsilon", 0.1)),
+                smoother_alpha=float(p1.get("smoother_alpha", 0.45)),
+                jump_max=float(p1.get("jump_max", 1.0)),
+                scan_latch_size=int(p1.get("scan_latch_size", 20)),
+                latch_dt_sec=float(p1.get("latch_dt_sec", 0.15)),
+                scans_to_merge=int(p1.get("scans_to_merge", 3)),
+                transform_timeout_sec=float(p1.get("transform_timeout_sec", 0.05)),
+                max_scan_range=float(p1.get("max_scan_range", 8.0)),
+            )
+            self.phase1_latch_dt_sec = params.latch_dt_sec
+            self.phase1_scans_to_merge = params.scans_to_merge
+            self.scan_latch = ScanLatch(maxlen=params.scan_latch_size)
+            self.phase1_engine = Phase1EndpointEngine(zone=zone, params=params)
+            self.current_zone = zone
+            self.safety_distance = params.safety_distance
+            self.safety_epsilon = params.safety_epsilon
+
+            self.phase2_params = Phase2Params(
+                v_stand_max=float(p2.get("v_stand_max", 0.3)),
+                assoc_gate=float(p2.get("assoc_gate", 0.9)),
+                age_min=int(p2.get("age_min", 3)),
+                miss_max=int(p2.get("miss_max", 8)),
+                side_angle_alpha_deg=float(p2.get("side_angle_alpha_deg", 18.0)),
+                t_lost_sec=float(p2.get("t_lost_sec", 2.0)),
+                dt_sync_sec=float(p2.get("dt_sync_sec", 0.25)),
+                goal_update_policy=str(p2.get("goal_update_policy", root.get("goal_update_policy", "latch"))),
+            )
+            cluster_filter = ClusterFilterParams(
+                n_min=params.n_min,
+                width_min=params.width_min,
+                width_max=params.width_max,
+                range_min=params.range_min,
+                range_max=params.range_max,
+            )
+            self.phase2_tracker = LidarPersonTracker(self.phase2_params, cluster_filter, params.cluster_eps)
+            self.phase2_associator = TriggerAssociator(self.phase2_params)
+            self.get_logger().info(f"LiDAR-native endpoint enabled (phase={self.endpoint_phase}).")
+        except Exception as ex:
+            self.get_logger().warn(f"Failed to load LiDAR-native config: {ex}. Falling back to legacy mode.")
+            self.use_lidar_native_endpoint = False
+
+    def _is_motion_ok(self):
+        if len(self.bbox_center_history) < 2:
+            return True
+        speeds = []
+        for i in range(1, len(self.bbox_center_history)):
+            t0, u0, v0 = self.bbox_center_history[i - 1]
+            t1, u1, v1 = self.bbox_center_history[i]
+            dt = max(t1 - t0, 1e-6)
+            speeds.append(float(np.sqrt((u1 - u0) ** 2 + (v1 - v0) ** 2) / dt))
+        return float(np.mean(speeds)) <= self.motion_v_bbox_max
+
+    def _build_trigger_event(self, hand_raised, stamp_sec):
+        return TriggerEvent(hand_raised=bool(hand_raised), motion_ok=self._is_motion_ok(), stamp_sec=stamp_sec)
+
+    def _rising_edge_trigger(self, active: bool) -> bool:
+        edge = bool(active) and not self.prev_trigger_active
+        self.prev_trigger_active = bool(active)
+        return edge
+
+    def _bbox_to_side_hint(self, box):
+        x1, _, x2, y2 = box
+        center_u = 0.5 * (x1 + x2)
+        u_norm = center_u / max(self.c_x * 2.0, 1.0)
+        area = (x2 - x1) * max(y2, 1.0)
+        if u_norm < 0.33:
+            side = "left"
+        elif u_norm < 0.67:
+            side = "center"
+        else:
+            side = "right"
+        rank = int(max(1.0, area))
+        return ImageSideHint(side=side, area_rank=rank)
+
+    def _get_robot_xy(self):
+        t_base = self.tf_buffer.lookup_transform(self.map_frame_id, self.base_frame_id, rclpy.time.Time())
+        return t_base.transform.translation.x, t_base.transform.translation.y
+
+    def _get_robot_pose_xy_yaw(self):
+        t_base = self.tf_buffer.lookup_transform(self.map_frame_id, self.base_frame_id, rclpy.time.Time())
+        x = t_base.transform.translation.x
+        y = t_base.transform.translation.y
+        q = t_base.transform.rotation
+        yaw = float(np.arctan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z)))
+        return x, y, yaw
+
+    def _laser_xy_to_map_xy(self, x_laser, y_laser):
+        point_map = self._transform_laser_to_map(x_laser, y_laser)
+        if point_map is None:
+            raise RuntimeError("laser->map transform unavailable")
+        return point_map
+
+    def _compute_lidar_native_goal_pose(self, trigger):
+        if self.phase1_engine is None or self.scan_latch is None:
+            return None
+        scans = self.scan_latch.get_scans_around(trigger.stamp_sec, self.phase1_latch_dt_sec, self.phase1_scans_to_merge)
+        if not scans:
+            return None
+        try:
+            robot_x, robot_y = self._get_robot_xy()
+        except Exception:
+            return None
+        endpoint, status = self.phase1_engine.compute(
+            trigger=trigger,
+            scans=scans,
+            robot_pose_xy=(robot_x, robot_y),
+            transform_laser_to_map=self._laser_xy_to_map_xy,
+        )
+        if endpoint is None:
+            if status == "ambiguous":
+                self.get_logger().warn("LiDAR-native ambiguous clusters (>1): rejecting trigger.")
+            return None
+        goal = compute_safety_goal(
+            person_x=endpoint.x,
+            person_y=endpoint.y,
+            robot_x=robot_x,
+            robot_y=robot_y,
+            safety_distance=self.safety_distance,
+            frame_id=self.map_frame_id,
+            eps=self.safety_epsilon,
+        )
+        if hasattr(goal, "reason"):
+            return "ALREADY_THERE"
+        out = PoseStamped()
+        out.header.frame_id = goal.frame_id
+        out.header.stamp = self.get_clock().now().to_msg()
+        out.pose.position.x = goal.x
+        out.pose.position.y = goal.y
+        out.pose.orientation.z = float(np.sin(goal.yaw / 2.0))
+        out.pose.orientation.w = float(np.cos(goal.yaw / 2.0))
+        return out
+
+    def _scan_to_zone_points(self, scan_msg):
+        if self.phase1_engine is None or self.current_zone is None:
+            return []
+        points_laser = laser_scan_to_points(
+            scan_msg,
+            frame_id=self.laser_frame_id,
+            max_range=self.phase1_engine.params.max_scan_range,
+        )
+        points_map = transform_points_to_map(points_laser, self._laser_xy_to_map_xy, out_frame_id=self.current_zone.frame_id)
+        return filter_points_in_zone(points_map, self.current_zone)
+
+    def _publish_tracks_debug(self, tracks):
+        arr = PoseArray()
+        arr.header.frame_id = self.map_frame_id
+        arr.header.stamp = self.get_clock().now().to_msg()
+        for tr in tracks:
+            p = Pose()
+            p.position.x = float(tr.x)
+            p.position.y = float(tr.y)
+            p.position.z = 0.0
+            p.orientation.w = 1.0
+            arr.poses.append(p)
+        self.tracks_pub.publish(arr)
+
     # ==========================================================================
     # ROS Callbacks
     # ==========================================================================
     def scan_callback(self, msg):
         self.latest_scan = msg
+        stamp_sec = float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) * 1e-9
+        if self.scan_latch is not None:
+            self.scan_latch.add(msg, stamp_sec)
+        if self.use_lidar_native_endpoint and self.endpoint_phase == 2 and self.phase2_tracker is not None:
+            try:
+                pts_zone = self._scan_to_zone_points(msg)
+                tracks = self.phase2_tracker.update_points(pts_zone, stamp_sec)
+                try:
+                    rx, ry, ryaw = self._get_robot_pose_xy_yaw()
+                    for tr in tracks:
+                        tr.side_lidar = classify_track_side(
+                            tr,
+                            robot_x=rx,
+                            robot_y=ry,
+                            robot_yaw=ryaw,
+                            alpha_deg=self.phase2_params.side_angle_alpha_deg,
+                        )
+                except Exception:
+                    pass
+                self.last_tracks = tracks
+                self._publish_tracks_debug(tracks)
+            except Exception as ex:
+                self.get_logger().warn(f"Phase2 tracker update failed: {ex}")
 
     def camera_info_callback(self, msg):
         if len(msg.k) >= 9 and msg.k[0] > 0.0:
@@ -323,12 +605,56 @@ class YoloV11PoseDetectorNode(Node):
         elif cmd == "IDLE":
             if self.general_status != "IDLE":
                 self.get_logger().info("Received 'IDLE' command! Transitioning state to IDLE.")
+                if self.use_straight_nav and self.person_goal_cancel_pub is not None:
+                    cancel = Bool()
+                    cancel.data = True
+                    self.person_goal_cancel_pub.publish(cancel)
+                self.navigation_status = "IDLE"
+                self.target_type = "NONE"
+                self.locked_target = None
+                self.locked_goal_pose = None
+                if self.phase1_engine is not None:
+                    self.phase1_engine.reset()
                 self._publish_general_status("IDLE")
 
     # ==========================================================================
     # Navigation Action Dispatch & Handlers
     # ==========================================================================
+    def _straight_nav_status_cb(self, msg):
+        """Maps straight_line_controller status into the existing SERVE/IDLE state machine."""
+        status = msg.data.strip().upper()
+        if status == self.navigation_status:
+            return
+        if status == "FROZEN":
+            self.navigation_status = "FROZEN"
+            return
+        if status == "EXECUTING":
+            self.navigation_status = "EXECUTING"
+            return
+        if status == "ARRIVED":
+            self.navigation_status = "ARRIVED"
+            if self.target_type == "PERSON":
+                self.get_logger().info("Arrived at person (straight nav)! Transitioning to SERVE.")
+                self.locked_target = None
+                self.locked_goal_pose = None
+                self._publish_general_status("SERVE")
+                self.target_type = "NONE"
+            elif self.target_type == "HOME":
+                self.get_logger().info("Arrived at home (straight nav)! Transitioning to IDLE.")
+                self._publish_general_status("IDLE")
+                self.target_type = "NONE"
+            return
+        if status == "IDLE" and self.navigation_status in ("EXECUTING", "FROZEN", "PLANNING"):
+            self.navigation_status = "IDLE"
+
     def send_navigation_goal(self, pose_goal):
+        if self.use_straight_nav:
+            self.get_logger().info("Dispatching goal to straight_line_controller (/person_goal)...")
+            self.navigation_status = "EXECUTING"
+            pose_goal.header.stamp = self.get_clock().now().to_msg()
+            self.person_goal_pub.publish(pose_goal)
+            return
+
         if self.nav_goal_handle is not None:
             self.get_logger().info("Canceling previous navigation target...")
             self.nav_goal_handle.cancel_goal_async()
@@ -478,6 +804,7 @@ class YoloV11PoseDetectorNode(Node):
         
         self.gesture_active = False
         target_goal_pose = None
+        trigger_event = None
 
         # 1. Perform Inference
         if self.use_onnx:
@@ -490,14 +817,24 @@ class YoloV11PoseDetectorNode(Node):
         # 2. Process Detections and Smart Multi-Person Selection
         if num_persons > 0:
             target_idx, target_det, raw_waving = self._select_target_person(detections)
+            self.last_target_detection = target_det
+            box = target_det['box']
+            center_u = 0.5 * (box[0] + box[2])
+            center_v = 0.5 * (box[1] + box[3])
+            self.bbox_center_history.append((time.time(), center_u, center_v))
 
             # Update temporal ring buffer with active waving status
             self.gesture_buffer.append(raw_waving)
             num_positive_frames = sum(self.gesture_buffer)
             self.gesture_active = num_positive_frames >= self.gesture_trigger_thresh
+            stamp_sec = float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) * 1e-9
+            trigger_event = self._build_trigger_event(self.gesture_active, stamp_sec)
 
             # Process tracking for the selected target person
-            target_goal_pose = self._process_person_tracking(target_det['kpts'], target_det['kpts_conf'])
+            if self.use_lidar_native_endpoint:
+                target_goal_pose = None
+            else:
+                target_goal_pose = self._process_person_tracking(target_det['kpts'], target_det['kpts_conf'])
 
             # Render Visualizations for all detected persons
             for idx, det in enumerate(detections):
@@ -509,10 +846,15 @@ class YoloV11PoseDetectorNode(Node):
         else:
             self.gesture_buffer.append(False)
             self.gesture_active = False
+            self.bbox_center_history.clear()
 
 
         if not self.gesture_active:
             self.target_pose_history.clear()
+            # Without this the jump_max gate would pin the endpoint to the
+            # previous person's position on the next unrelated wave.
+            if self.phase1_engine is not None:
+                self.phase1_engine.reset()
 
         cur_time = time.time()
 
@@ -521,6 +863,77 @@ class YoloV11PoseDetectorNode(Node):
             self.navigation_status = "IDLE"
 
         # 4. Handle Navigation Action Triggering
+        if self.use_lidar_native_endpoint and trigger_event is not None and trigger_event.hand_raised:
+            if self.endpoint_phase == 1 and trigger_event.motion_ok:
+                target_goal_pose = self._compute_lidar_native_goal_pose(trigger_event)
+            elif self.endpoint_phase == 2 and trigger_event.motion_ok and self.phase2_associator is not None:
+                rising_edge = self._rising_edge_trigger(True)
+                if rising_edge:
+                    side_hint = None
+                    if self.last_target_detection is not None:
+                        side_hint = self._bbox_to_side_hint(self.last_target_detection['box'])
+                    assoc = self.phase2_associator.associate(trigger_event, self.last_tracks, side_hint)
+                    self.locked_target = update_lock_state(
+                        lock=self.locked_target,
+                        assoc=assoc,
+                        now_sec=cur_time,
+                        t_lost_sec=self.phase2_params.t_lost_sec,
+                        track_exists=assoc.ok,
+                    )
+                    lock_msg = String()
+                    if assoc.ok and assoc.track_id is not None:
+                        lock_msg.data = f"locked:{assoc.track_id}:{assoc.method}"
+                        self.locked_goal_pose = None
+                    else:
+                        lock_msg.data = f"reject:{assoc.reason}"
+                    self.locked_pub.publish(lock_msg)
+                if self.locked_target is not None and self.phase2_tracker is not None:
+                    tr = self.phase2_tracker.get_track(self.locked_target.track_id)
+                    self.locked_target = update_lock_state(
+                        lock=self.locked_target,
+                        assoc=None,
+                        now_sec=cur_time,
+                        t_lost_sec=self.phase2_params.t_lost_sec,
+                        track_exists=tr is not None,
+                    )
+                    if self.locked_target is None:
+                        self.locked_goal_pose = None
+                    if tr is not None:
+                        try:
+                            robot_x, robot_y = self._get_robot_xy()
+                        except Exception:
+                            robot_x, robot_y = 0.0, 0.0
+                        goal = compute_safety_goal(
+                            person_x=tr.x,
+                            person_y=tr.y,
+                            robot_x=robot_x,
+                            robot_y=robot_y,
+                            safety_distance=self.safety_distance,
+                            frame_id=self.map_frame_id,
+                            eps=self.safety_epsilon,
+                        )
+                        if hasattr(goal, "reason"):
+                            target_goal_pose = "ALREADY_THERE"
+                        else:
+                            if self.phase2_params.goal_update_policy == "latch" and self.locked_goal_pose is not None:
+                                target_goal_pose = self.locked_goal_pose
+                            else:
+                                pose = PoseStamped()
+                                pose.header.frame_id = goal.frame_id
+                                pose.header.stamp = self.get_clock().now().to_msg()
+                                pose.pose.position.x = goal.x
+                                pose.pose.position.y = goal.y
+                                pose.pose.orientation.z = float(np.sin(goal.yaw / 2.0))
+                                pose.pose.orientation.w = float(np.cos(goal.yaw / 2.0))
+                                target_goal_pose = pose
+                                if self.phase2_params.goal_update_policy == "latch":
+                                    self.locked_goal_pose = pose
+            elif not hasattr(self, '_last_motion_block_log') or (cur_time - self._last_motion_block_log) > 2.0:
+                self._last_motion_block_log = cur_time
+                self.get_logger().info("Trigger blocked by motion gate (person moving).")
+        elif self.use_lidar_native_endpoint and self.endpoint_phase == 2:
+            self._rising_edge_trigger(False)
+
         if self.gesture_active and target_goal_pose is not None:
             if self.general_status in ["IDLE", "SERVE"] and self.navigation_status in ["IDLE", "ARRIVED"]:
                 if (cur_time - self.last_goal_sent_time) > self.goal_cooldown_sec:

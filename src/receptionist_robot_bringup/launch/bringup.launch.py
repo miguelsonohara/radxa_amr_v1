@@ -6,11 +6,13 @@ Author: Senior Robotics Engineer
 
 This launch file starts:
 1. Micro-ROS Agent: Communicates with ESP32 (shares /odom, /tf, and receives /cmd_vel).
-# 2. Lidar Node (sllidar_ros2): Pulls scan points from RPLidar and publishes to /scan.
-# 2. Lidar Node (hclidar_driver_ros2): Pulls scan points from HCLiDAR and publishes to /scan.
+2. Lidar Node: Publishes /scan.
 3. Robot State Publisher: Parses Xacro URDF and publishes static transforms.
-4. SLAM Toolbox: Builds map dynamically and publishes map->odom transform.
-5. Nav2 Stack: Standard path planning and local control, utilizing custom costmaps.
+4. SLAM Toolbox: map->odom transform (localization).
+5. YOLO pose + straight_line_controller:
+   - /scan + YOLO -> /person_goal (end goal)
+   - /scan -> obstacle freeze/resume while driving straight
+   Optional: enable_nav2:=true to also launch legacy Nav2.
 """
 
 import os
@@ -19,6 +21,7 @@ from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -29,11 +32,14 @@ def generate_launch_description():
     # --------------------------------------------------------------------------
     description_dir = get_package_share_directory('receptionist_robot_description')
     bringup_dir = get_package_share_directory('receptionist_robot_bringup')
+    yolo_pkg_dir = get_package_share_directory('yolov11_pose_detector')
     
     # Locate our custom parameter files
     slam_params_path = os.path.join(bringup_dir, 'config', 'slam_toolbox_params.yaml')
     nav2_params_path = os.path.join(bringup_dir, 'config', 'nav2_params.yaml')
     ekf_params_path = os.path.join(bringup_dir, 'config', 'ekf.yaml')
+    service_zone_path = os.path.join(yolo_pkg_dir, 'config', 'service_zone.yaml')
+    lidar_endpoint_path = os.path.join(yolo_pkg_dir, 'config', 'lidar_endpoint.yaml')
     
     # Locate navigation bringup launch file from nav2_bringup package
     nav2_launch_path = os.path.join(get_package_share_directory('nav2_bringup'), 'launch', 'navigation_launch.py')
@@ -104,6 +110,12 @@ def generate_launch_description():
         'camera_device',
         default_value='/dev/my_camera',
         description='Video device path for usb_cam'
+    )
+
+    declare_enable_nav2 = DeclareLaunchArgument(
+        'enable_nav2',
+        default_value='false',
+        description='If true, also launch legacy Nav2 stack (default: straight-line controller only)'
     )
 
     # --------------------------------------------------------------------------
@@ -191,12 +203,39 @@ def generate_launch_description():
         output='screen'
     )
 
-    # H. YOLOv11 Pose Detector Node
+    # H. YOLOv11 Pose Detector Node (YOLO + /scan -> /person_goal)
     yolo_pose_node = Node(
         package='yolov11_pose_detector',
         executable='pose_detector_node',
         name='yolov11_pose_detector',
-        output='screen'
+        output='screen',
+        parameters=[
+            {
+                'use_straight_nav': True,
+                'use_lidar_native_endpoint': True,
+                # Plain YAML read by the node itself, not ROS parameter files.
+                'service_zone_config': service_zone_path,
+                'lidar_endpoint_config': lidar_endpoint_path,
+            },
+        ]
+    )
+
+    # H2. Straight-line controller (/person_goal + /scan obstacle freeze)
+    # Skipped when Nav2 runs, otherwise both would publish /cmd_vel.
+    straight_line_controller_node = Node(
+        package='yolov11_pose_detector',
+        executable='straight_line_controller',
+        name='straight_line_controller',
+        output='screen',
+        condition=UnlessCondition(LaunchConfiguration('enable_nav2')),
+        parameters=[{
+            'linear_speed': 0.25,
+            'angular_speed': 0.55,
+            'obstacle_stop_range_m': 0.70,
+            'obstacle_clear_range_m': 0.90,
+            'obstacle_half_angle_deg': 25.0,
+            'use_stamped_cmd_vel': True,
+        }]
     )
 
     # I. Nav2 Keepout Filter Nodes (Restricted Stair/Hole Zones)
@@ -265,12 +304,10 @@ def generate_launch_description():
         }.items()
     )
 
-    # F. Nav2 Stack
-    # Launches controller, planner, behavior server, smoother, collision monitor, 
-    # and waypoint follower. It excludes localization (AMCL) since SLAM is active.
-    # Uses our custom parameter file.
+    # F. Nav2 Stack (optional legacy — disabled by default)
     nav2_navigation_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(nav2_launch_path),
+        condition=IfCondition(LaunchConfiguration('enable_nav2')),
         launch_arguments={
             'params_file': nav2_params_path,
             'use_sim_time': LaunchConfiguration('use_sim_time'),
@@ -292,6 +329,7 @@ def generate_launch_description():
     ld.add_action(declare_scan_mode)
     ld.add_action(declare_lidar_model)
     ld.add_action(declare_camera_device)
+    ld.add_action(declare_enable_nav2)
     
     # Add Core Driver & Hardware Nodes Immediately
     ld.add_action(micro_ros_agent_node)
@@ -305,15 +343,16 @@ def generate_launch_description():
     ld.add_action(wifi_receiver_node)
     ld.add_action(slam_toolbox_launch)
     
-    # Delayed Startup (4 seconds) for Nav2 & Perception to allow TF trees to stabilize
-    delayed_nav2_and_perception = TimerAction(
+    # Delayed Startup (4 seconds) for perception + straight drive (TF stabilize)
+    delayed_nav_and_perception = TimerAction(
         period=4.0,
         actions=[
             yolo_pose_node,
-            nav2_navigation_launch
+            straight_line_controller_node,
+            nav2_navigation_launch,
         ]
     )
-    ld.add_action(delayed_nav2_and_perception)
+    ld.add_action(delayed_nav_and_perception)
 
     return ld
 

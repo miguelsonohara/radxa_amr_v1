@@ -1,0 +1,38 @@
+lidar_endpoint:
+  use_lidar_native_endpoint: true
+  endpoint_phase: 1
+  goal_update_policy: latch
+
+  phase1:
+    cluster_eps: 0.35
+    n_min: 3
+    width_min: 0.12
+    width_max: 0.9
+    range_min: 0.4
+    range_max: 7.5
+    safety_distance: 1.0
+    safety_epsilon: 0.1
+    smoother_alpha: 0.45
+    jump_max: 1.0
+    scan_latch_size: 20
+    latch_dt_sec: 0.15
+    scans_to_merge: 3
+    transform_timeout_sec: 0.05
+    max_scan_range: 8.0
+
+  phase2:
+    v_stand_max: 0.3
+    assoc_gate: 0.9
+    age_min: 3
+    miss_max: 8
+    side_angle_alpha_deg: 18.0
+    t_lost_sec: 2.0
+    dt_sync_sec: 0.25
+    goal_update_policy: latch
+
+  trigger:
+    gesture_buffer_size: 10
+    gesture_trigger_threshold: 7
+    motion_window: 5
+    motion_v_bbox_max: 35.0
+    goal_cooldown_sec: 6.0
