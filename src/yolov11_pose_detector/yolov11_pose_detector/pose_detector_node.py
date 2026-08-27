@@ -90,16 +90,19 @@ class YoloV11PoseDetectorNode(Node):
         self.declare_parameter('base_frame_id', 'base_link')
         self.declare_parameter('map_frame_id', 'map')
         
-        self.declare_parameter('safety_distance', 0.7)
-        self.declare_parameter('camera_mount_x', -0.06)
+        self.declare_parameter('safety_distance', 1.0)
+        self.declare_parameter('camera_mount_x', -0.045)
         self.declare_parameter('camera_mount_y', 0.0)
-        self.declare_parameter('camera_mount_z', 1.16)
+        self.declare_parameter('camera_mount_z', 1.07)
         self.declare_parameter('camera_laser_yaw_offset', 0.0)
+        self.declare_parameter('camera_laser_yaw_offset_deg', 0.0)
+        self.declare_parameter('camera_yaw_offset_deg', 0.0)
         
         self.declare_parameter('person_avg_shoulder_width', 0.38)
 
         self.declare_parameter('lidar_gate_range_margin', 0.5)
-        self.declare_parameter('lidar_gate_angle_deg', 5.0)
+        self.declare_parameter('lidar_gate_angle_deg', 20.0)
+        self.declare_parameter('lidar_search_half_angle_deg', 20.0)
         self.declare_parameter('goal_cooldown_sec', 6.0)
         
         self.declare_parameter('arm_raise_head_margin', 0.15)
@@ -141,11 +144,19 @@ class YoloV11PoseDetectorNode(Node):
         self.camera_mount_x = self.get_parameter('camera_mount_x').value
         self.camera_mount_y = self.get_parameter('camera_mount_y').value
         self.camera_mount_z = self.get_parameter('camera_mount_z').value
-        self.camera_laser_yaw_offset = self.get_parameter('camera_laser_yaw_offset').value
+        
+        laser_offset_rad = self.get_parameter('camera_laser_yaw_offset').value
+        laser_offset_deg = self.get_parameter('camera_laser_yaw_offset_deg').value
+        self.camera_laser_yaw_offset = float(np.radians(laser_offset_deg)) if abs(laser_offset_deg) > 1e-4 else float(laser_offset_rad)
+        self.camera_yaw_offset_rad = float(np.radians(self.get_parameter('camera_yaw_offset_deg').value))
         
         self.person_shoulder_width = self.get_parameter('person_avg_shoulder_width').value
         self.lidar_gate_margin = self.get_parameter('lidar_gate_range_margin').value
-        self.lidar_gate_angle_rad = np.radians(self.get_parameter('lidar_gate_angle_deg').value)
+        
+        search_angle_deg = self.get_parameter('lidar_search_half_angle_deg').value
+        gate_angle_deg = self.get_parameter('lidar_gate_angle_deg').value
+        self.lidar_search_half_angle_rad = float(np.radians(max(search_angle_deg, gate_angle_deg)))
+        self.lidar_gate_angle_rad = self.lidar_search_half_angle_rad
         self.goal_cooldown_sec = self.get_parameter('goal_cooldown_sec').value
 
         self.arm_raise_head_margin = self.get_parameter('arm_raise_head_margin').value
@@ -812,6 +823,83 @@ class YoloV11PoseDetectorNode(Node):
         return 0, detections[0], False
 
 
+    def _compute_body_centroid(self, kpts, kpts_conf):
+        """
+        Computes a stable horizontal and vertical body centroid (u, v) in image pixels.
+        Robustly combines facial landmarks (nose/eyes/ears), shoulder midpoints, and hip midpoints
+        so that asymmetric hand/arm raising gestures do not drag the centroid sideways.
+        """
+        # 1. Head Centerline (Nose 0, L_Eye 1, R_Eye 2, L_Ear 3, R_Ear 4)
+        head_indices = [0, 1, 2, 3, 4]
+        valid_head_x = [
+            float(kpts[i, 0]) for i in head_indices
+            if i < len(kpts_conf) and kpts_conf[i] > self.kp_conf_threshold and (kpts[i, 0] > 1e-3 or kpts[i, 1] > 1e-3)
+        ]
+        head_center_x = float(np.mean(valid_head_x)) if len(valid_head_x) > 0 else None
+
+        # 2. Shoulder Centerline & Vertical Position (L_Shoulder 5, R_Shoulder 6)
+        l_sh_conf = kpts_conf[5] if len(kpts_conf) > 5 else 0.0
+        r_sh_conf = kpts_conf[6] if len(kpts_conf) > 6 else 0.0
+        
+        shoulder_center_x = None
+        shoulder_center_y = None
+        if l_sh_conf > self.kp_conf_threshold and r_sh_conf > self.kp_conf_threshold:
+            shoulder_center_x = (float(kpts[5, 0]) + float(kpts[6, 0])) / 2.0
+            shoulder_center_y = (float(kpts[5, 1]) + float(kpts[6, 1])) / 2.0
+        elif l_sh_conf > self.kp_conf_threshold:
+            shoulder_center_x = float(kpts[5, 0])
+            shoulder_center_y = float(kpts[5, 1])
+        elif r_sh_conf > self.kp_conf_threshold:
+            shoulder_center_x = float(kpts[6, 0])
+            shoulder_center_y = float(kpts[6, 1])
+
+        # 3. Hip Centerline & Vertical Position (L_Hip 11, R_Hip 12)
+        l_hip_conf = kpts_conf[11] if len(kpts_conf) > 11 else 0.0
+        r_hip_conf = kpts_conf[12] if len(kpts_conf) > 12 else 0.0
+
+        hip_center_x = None
+        hip_center_y = None
+        if l_hip_conf > self.kp_conf_threshold and r_hip_conf > self.kp_conf_threshold:
+            hip_center_x = (float(kpts[11, 0]) + float(kpts[12, 0])) / 2.0
+            hip_center_y = (float(kpts[11, 1]) + float(kpts[12, 1])) / 2.0
+        elif l_hip_conf > self.kp_conf_threshold:
+            hip_center_x = float(kpts[11, 0])
+            hip_center_y = float(kpts[11, 1])
+        elif r_hip_conf > self.kp_conf_threshold:
+            hip_center_x = float(kpts[12, 0])
+            hip_center_y = float(kpts[12, 1])
+
+        # 4. Fuse Horizontal Centerline (u)
+        # Prioritize median/weighted combination of Head, Shoulder, and Hip centers
+        centerline_candidates = []
+        if shoulder_center_x is not None:
+            centerline_candidates.append(shoulder_center_x)
+        if hip_center_x is not None:
+            centerline_candidates.append(hip_center_x)
+        if head_center_x is not None:
+            centerline_candidates.append(head_center_x)
+
+        if len(centerline_candidates) == 3:
+            # Use median to strongly reject any outlier caused by single-side arm movement
+            body_center_u = float(np.median(centerline_candidates))
+        elif len(centerline_candidates) == 2:
+            body_center_u = float(np.mean(centerline_candidates))
+        elif len(centerline_candidates) == 1:
+            body_center_u = float(centerline_candidates[0])
+        else:
+            body_center_u = float(self.c_x)
+
+        # 5. Fuse Vertical Centerline (v)
+        if shoulder_center_y is not None and hip_center_y is not None:
+            body_center_v = (shoulder_center_y + hip_center_y) / 2.0
+        elif shoulder_center_y is not None:
+            body_center_v = shoulder_center_y
+        else:
+            body_center_v = float(self.c_y)
+
+        return body_center_u, body_center_v
+
+
     def _process_person_tracking(self, kpts, kpts_conf):
         """Estimates distance, fuses LiDAR range data, and projects Nav2 target pose with moving average smoothing."""
         left_shoulder = kpts[5]
@@ -831,63 +919,67 @@ class YoloV11PoseDetectorNode(Node):
         Z_est = (self.person_shoulder_width * self.f_x) / d_pixel
         Z_est = float(np.clip(Z_est, 0.8, 8.0))
 
-        # Calculate Torso Centroid using Shoulders (5, 6) and Hips (11, 12) if available
-        shoulder_center_u = (left_shoulder[0] + right_shoulder[0]) / 2.0
-        shoulder_center_v = (left_shoulder[1] + right_shoulder[1]) / 2.0
+        # Calculate robust Torso Centroid
+        body_center_u, body_center_v = self._compute_body_centroid(kpts, kpts_conf)
 
-        if len(kpts_conf) > 12 and kpts_conf[11] > self.kp_conf_threshold and kpts_conf[12] > self.kp_conf_threshold:
-            hip_center_u = (kpts[11, 0] + kpts[12, 0]) / 2.0
-            hip_center_v = (kpts[11, 1] + kpts[12, 1]) / 2.0
-            body_center_u = (shoulder_center_u + hip_center_u) / 2.0
-            body_center_v = (shoulder_center_v + hip_center_v) / 2.0
+        # 2. Wide-Sector LiDAR Cluster Tracking
+        best_x_laser, best_y_laser, fused_dist = self._fuse_lidar_distance(body_center_u, body_center_v, Z_est)
+        self.fused_distance = fused_dist
+
+        if best_x_laser is not None and best_y_laser is not None:
+            # 3A. Direct LiDAR to Map Transformation (100% accurate coordinates from LiDAR point cloud)
+            target_coords = self._transform_laser_to_map(best_x_laser, best_y_laser)
         else:
-            body_center_u = shoulder_center_u
-            body_center_v = shoulder_center_v
+            # 3B. Monocular Camera 3D to Map Transformation Fallback
+            tan_x = (body_center_u - self.c_x) / self.f_x
+            tan_y = (body_center_v - self.c_y) / self.f_y
 
-        # 2. LiDAR Ray-Casting & Smart Hybrid Window Gating
-        d_lidar = self._fuse_lidar_distance(body_center_u, body_center_v, Z_est)
-        self.fused_distance = d_lidar
+            if abs(getattr(self, 'camera_yaw_offset_rad', 0.0)) > 1e-4:
+                theta_x = np.arctan(tan_x) - self.camera_yaw_offset_rad
+                tan_x = float(np.tan(theta_x))
 
-        # 3. 3D Coordinates in Camera Optical Frame
-        Z_cam = d_lidar
-        X_cam = Z_cam * (body_center_u - self.c_x) / self.f_x
-        Y_cam = Z_cam * (body_center_v - self.c_y) / self.f_y
+            norm_factor = np.sqrt(1.0 + tan_x**2 + tan_y**2)
+            Z_cam = fused_dist / norm_factor
+            X_cam = Z_cam * tan_x
+            Y_cam = Z_cam * tan_y
+            target_coords = self._transform_camera_to_map(X_cam, Y_cam, Z_cam)
 
-        # 4. Map Frame Transformation
-        target_coords = self._transform_camera_to_map(X_cam, Y_cam, Z_cam)
         if target_coords is None:
             return None
 
-        # 5. Moving Average Position Smoothing (5-frame filter)
+        # 4. Moving Average Position Smoothing (5-frame filter)
         self.target_pose_history.append(target_coords)
         avg_x = float(np.mean([pt[0] for pt in self.target_pose_history]))
         avg_y = float(np.mean([pt[1] for pt in self.target_pose_history]))
 
-        # 6. Safety Offset Goal Pose Generation
+        # 5. Safety Offset Goal Pose Generation
         return self._generate_safety_goal_pose(avg_x, avg_y)
 
 
-    def _fuse_lidar_distance(self, shoulder_center_u, shoulder_center_v, Z_est):
+    def _fuse_lidar_distance(self, body_center_u, body_center_v, Z_est):
         """
-        Ray-casting LiDAR fusion with Smart Hybrid Window Gating.
-        Projects sight vector (u, v) from camera to laser frame via TF2 to get true LiDAR azimuth,
-        then filters LiDAR points within depth window [0.6*Z_est, 1.5*Z_est] to reject low obstacles.
+        Wide-Sector LiDAR Cluster Tracking:
+        1. Projects camera sight ray to laser azimuth angle theta_laser.
+        2. Scans a wide sector (+/- lidar_search_half_angle_rad, default +/-20 deg).
+        3. Extracts 2D point clusters (Euclidean jump distance < 0.35m).
+        4. Selects the most plausible human foreground cluster.
+        5. Returns (best_x_laser, best_y_laser, best_range).
+        If no cluster is found, falls back to (None, None, Z_est).
         """
         self.tracker_mode = "Mono Est"
         if self.latest_scan is None:
-            return Z_est
+            return None, None, Z_est
 
-        # 1. Project sight ray into camera optical frame
-        x_cam = (shoulder_center_u - self.c_x) / self.f_x
-        y_cam = (shoulder_center_v - self.c_y) / self.f_y
-        z_cam = 1.0
-
+        # 1. Project sight ray into camera optical frame at estimated distance Z_est
+        tan_x = (body_center_u - self.c_x) / self.f_x
+        tan_y = (body_center_v - self.c_y) / self.f_y
+        
         p_cam = PointStamped()
         p_cam.header.frame_id = self.camera_frame_id
         p_cam.header.stamp = rclpy.time.Time().to_msg()
-        p_cam.point.x = x_cam
-        p_cam.point.y = y_cam
-        p_cam.point.z = z_cam
+        p_cam.point.x = Z_est * tan_x
+        p_cam.point.y = Z_est * tan_y
+        p_cam.point.z = Z_est
 
         # 2. Transform sight ray point from camera optical frame to laser frame using TF2
         theta_laser = None
@@ -901,35 +993,139 @@ class YoloV11PoseDetectorNode(Node):
 
         # Fallback angle estimation if TF fails
         if theta_laser is None:
-            theta_cam = np.arctan2(shoulder_center_u - self.c_x, self.f_x)
-            theta_laser = -theta_cam + self.camera_laser_yaw_offset
+            theta_cam = np.arctan2(body_center_u - self.c_x, self.f_x)
+            theta_laser = -theta_cam
 
-        # 3. Smart Hybrid Window Gating: filter out foreground low obstacles
-        z_min_window = max(0.4, Z_est * 0.6)
-        z_max_window = min(12.0, Z_est * 1.5 + 0.5)
+        # Apply optional camera-laser yaw calibration offset
+        if abs(getattr(self, 'camera_laser_yaw_offset', 0.0)) > 1e-4:
+            theta_laser += self.camera_laser_yaw_offset
 
+        # 3. Extract points in the wide search sector (+/-20 deg)
         scan = self.latest_scan
         angles = scan.angle_min + np.arange(len(scan.ranges)) * scan.angle_increment
         angles_norm = np.arctan2(np.sin(angles), np.cos(angles))
 
-        angle_diff = np.arctan2(
+        angle_diffs = np.arctan2(
             np.sin(angles_norm - theta_laser),
             np.cos(angles_norm - theta_laser)
         )
 
-        mask_angle = np.abs(angle_diff) <= self.lidar_gate_angle_rad
-        valid_ranges = []
-        for s_idx in np.where(mask_angle)[0]:
-            r = scan.ranges[s_idx]
-            if scan.range_min <= r <= scan.range_max:
-                if z_min_window <= r <= z_max_window:
-                    valid_ranges.append(r)
+        search_rad = getattr(self, 'lidar_search_half_angle_rad', np.radians(20.0))
+        pts_in_sector = []
 
-        if len(valid_ranges) > 0:
-            self.tracker_mode = "LiDAR Fused"
-            return float(np.median(valid_ranges))
+        for idx in range(len(scan.ranges)):
+            if abs(angle_diffs[idx]) <= search_rad:
+                r = scan.ranges[idx]
+                if scan.range_min <= r <= min(scan.range_max, 7.5):
+                    x_pt = r * np.cos(angles_norm[idx])
+                    y_pt = r * np.sin(angles_norm[idx])
+                    pts_in_sector.append({
+                        'r': float(r),
+                        'theta': float(angles_norm[idx]),
+                        'x': float(x_pt),
+                        'y': float(y_pt),
+                        'angle_diff': float(abs(angle_diffs[idx]))
+                    })
 
-        return Z_est
+        if len(pts_in_sector) == 0:
+            return None, None, Z_est
+
+        # 4. Cluster adjacent points (Euclidean jump < 0.35m)
+        clusters = []
+        current_cluster = [pts_in_sector[0]]
+
+        for i in range(1, len(pts_in_sector)):
+            prev_pt = pts_in_sector[i - 1]
+            curr_pt = pts_in_sector[i]
+            d_jump = np.sqrt((curr_pt['x'] - prev_pt['x'])**2 + (curr_pt['y'] - prev_pt['y'])**2)
+            if d_jump < 0.35:
+                current_cluster.append(curr_pt)
+            else:
+                if len(current_cluster) >= 2:
+                    clusters.append(current_cluster)
+                current_cluster = [curr_pt]
+
+        if len(current_cluster) >= 2:
+            clusters.append(current_cluster)
+
+        # Fallback if no multi-point clusters: treat entire candidate set as 1 cluster if dense
+        if len(clusters) == 0:
+            clusters.append(pts_in_sector)
+
+        # 5. Evaluate and Score clusters to pick the human
+        scored_clusters = []
+        for cl in clusters:
+            cl_x = [pt['x'] for pt in cl]
+            cl_y = [pt['y'] for pt in cl]
+            cl_r = [pt['r'] for pt in cl]
+            
+            centroid_x = float(np.median(cl_x))
+            centroid_y = float(np.median(cl_y))
+            mean_r = float(np.median(cl_r))
+            
+            # Cluster diameter/width
+            min_x, max_x = min(cl_x), max(cl_x)
+            min_y, max_y = min(cl_y), max(cl_y)
+            width = float(np.sqrt((max_x - min_x)**2 + (max_y - min_y)**2))
+            
+            # Reject clusters wider than 0.85m (e.g. continuous long walls)
+            if width > 0.85 and len(clusters) > 1:
+                continue
+
+            # Centroid angle difference to camera ray
+            cl_theta = np.arctan2(centroid_y, centroid_x)
+            cl_angle_err = abs(np.arctan2(np.sin(cl_theta - theta_laser), np.cos(cl_theta - theta_laser)))
+            
+            # Score: combination of foreground proximity (smaller r is better), angle alignment, and Z_est consistency
+            score = mean_r * 0.6 + cl_angle_err * 2.5 + abs(mean_r - Z_est) * 0.2
+            scored_clusters.append((score, centroid_x, centroid_y, mean_r))
+
+        if len(scored_clusters) > 0:
+            scored_clusters.sort(key=lambda item: item[0])
+            best_x = scored_clusters[0][1]
+            best_y = scored_clusters[0][2]
+            best_r = scored_clusters[0][3]
+            
+            self.tracker_mode = "LiDAR Cluster"
+            self.fused_distance = best_r
+            return best_x, best_y, best_r
+
+        return None, None, Z_est
+
+
+    def _transform_laser_to_map(self, x_laser, y_laser):
+        """Transforms 2D laser coordinates (x, y) directly to (map_x, map_y)."""
+        point_laser = PointStamped()
+        point_laser.header.frame_id = self.laser_frame_id
+        point_laser.header.stamp = rclpy.time.Time().to_msg()
+        point_laser.point.x = float(x_laser)
+        point_laser.point.y = float(y_laser)
+        point_laser.point.z = 0.0
+
+        # Direct Transform: laser_frame -> map
+        try:
+            if self.tf_buffer.can_transform(self.map_frame_id, self.laser_frame_id, rclpy.time.Time()):
+                point_map = self.tf_buffer.transform(point_laser, self.map_frame_id)
+                return (point_map.point.x, point_map.point.y)
+        except Exception as ex:
+            self.get_logger().warn(f"Direct laser-to-map transform failed: {ex}")
+
+        # Fallback Transform: base_link -> map
+        try:
+            if self.tf_buffer.can_transform(self.map_frame_id, self.base_frame_id, rclpy.time.Time()):
+                point_base = PointStamped()
+                point_base.header.frame_id = self.base_frame_id
+                point_base.header.stamp = rclpy.time.Time().to_msg()
+                point_base.point.x = float(x_laser)
+                point_base.point.y = float(y_laser)
+                point_base.point.z = 0.16
+                point_map = self.tf_buffer.transform(point_base, self.map_frame_id)
+                return (point_map.point.x, point_map.point.y)
+        except Exception as tf_ex:
+            self.get_logger().warn(f"Fallback laser-to-map transform failed: {tf_ex}")
+
+        return None
+
 
     def _transform_camera_to_map(self, X_cam, Y_cam, Z_cam):
         """Transforms 3D optical camera coordinates to (map_x, map_y)."""
