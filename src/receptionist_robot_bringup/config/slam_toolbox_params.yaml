@@ -76,21 +76,20 @@ slam_toolbox:
     use_scan_barycenter: true
 
     # Minimum distance (meters) the robot must move before processing a new scan.
-    # Tuning: Set to 0.01 in localization mode so SLAM continuously corrects IMU/odom drift even when standing still.
-    minimum_travel_distance: 0.01
+    # Tuning: Set to 0.25m in localization mode so SLAM maintains a lightweight graph without memory bloat.
+    minimum_travel_distance: 0.25
 
     # Minimum heading change (radians) the robot must rotate before processing a new scan.
-    # Tuning: Set to 0.01 so stationary angular drift is immediately compensated by LiDAR scan matching.
-    minimum_travel_heading: 0.01
+    # Tuning: Set to 0.25 rad (~14 deg) to avoid inserting excessive rotational nodes.
+    minimum_travel_heading: 0.25
 
     # If true, both distance AND heading threshold must be met to process a scan.
     # If false, either threshold being met triggers a scan update (default, safer).
     check_min_dist_and_heading_precisely: false
 
     # Number of scans to buffer in memory for loop closure and optimization.
-    # Tuning: Lower values save memory/CPU on low-resource hosts like Radxa;
-    # higher values (e.g., 20) improve map consistency at the cost of computing resources.
-    scan_buffer_size: 15
+    # Tuning: Lower values save memory/CPU on low-resource hosts like Radxa.
+    scan_buffer_size: 10
 
     # Maximum distance (meters) between scans to consider them for matching.
     # Scans further than this will not be linked in the pose graph.
@@ -111,8 +110,8 @@ slam_toolbox:
     loop_search_maximum_distance: 3.0
 
     # If true, enables loop closure detection and optimization.
-    # Tuning: Crucial for mapping large areas to correct accumulated odometry drift.
-    do_loop_closing: true
+    # Tuning: Set to false in pure localization mode to eliminate CPU spikes and long-run graph bloat.
+    do_loop_closing: false
 
     # Minimum number of sequential scans in a chain to trigger loop closing.
     # Tuning: Prevents false loop closures from transient obstacles.
@@ -160,12 +159,12 @@ slam_toolbox:
     # ==========================================================================
 
     # Penalty weight applied to translation updates that deviate from odometry.
-    # Tuning: Increase (e.g., 0.8) to trust your ESP32 odometry more; decrease to trust LiDAR matches more.
-    distance_variance_penalty: 0.3
+    # Tuning: Set to 0.1 so SLAM trusts LiDAR scan matches aggressively to eliminate movement slip.
+    distance_variance_penalty: 0.1
 
     # Penalty weight applied to rotation updates that deviate from odometry.
-    # Tuning: Increase if your robot rotates smoothly and you want to prevent LiDAR sliding on walls.
-    angle_variance_penalty: 0.3
+    # Tuning: Set to 0.1 so heading corrections from LiDAR are applied immediately.
+    angle_variance_penalty: 0.1
 
     # Angular search range offset (radians) for fine matching.
     fine_search_angle_offset: 0.00349
@@ -177,10 +176,10 @@ slam_toolbox:
     coarse_angle_resolution: 0.0349
 
     # Minimum score penalty for orientation deviations.
-    minimum_angle_penalty: 0.9
+    minimum_angle_penalty: 0.85
 
     # Minimum score penalty for translation deviations.
-    minimum_distance_penalty: 0.5
+    minimum_distance_penalty: 0.3
 
     # Expand search windows if matching scores are low.
     use_response_expansion: true
@@ -202,8 +201,8 @@ slam_toolbox:
     transform_publish_period: 0.02
 
     # Interval (seconds) at which the occupancy grid map is updated and published to /map.
-    # Tuning: Increase (e.g., 5.0) to save CPU; decrease (e.g., 1.0) for rapid map updates in RViz.
-    map_update_interval: 2.0
+    # Tuning: Increase (e.g., 5.0) to save CPU in localization mode.
+    map_update_interval: 5.0
 
     # Spatial resolution (meters per cell) of the generated map.
     # Tuning: 0.05 (5cm) is standard for Nav2. Decreasing (e.g. 0.02) increases detail but uses more memory.
@@ -218,14 +217,14 @@ slam_toolbox:
     # Tuning: Reduce (e.g. 12.0) to ignore noisy long-range readings from the RPLidar.
     max_laser_range: 12.0
 
-    # Minimum time (seconds) between processing successive scan updates.
-    minimum_time_interval: 0.1
+    # Minimum time (seconds) between processing successive scan updates (20Hz max rate).
+    minimum_time_interval: 0.05
 
     # Timeout duration (seconds) when waiting for transforms.
-    transform_timeout: 0.2
+    transform_timeout: 0.5
 
     # Duration (seconds) of the TF buffer. Keep high enough to cover latency.
-    tf_buffer_duration: 10.0
+    tf_buffer_duration: 15.0
 
     # Stack size (bytes) allocated for the serialization threads.
     # Must be large to serialize high-resolution maps without segmentation faults.
