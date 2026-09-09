@@ -38,9 +38,35 @@ wait_for_dev() {
     return 1
 }
 
+# Normal application reset sequence: DTR=False (GPIO0=HIGH), pulse RTS (EN=LOW then HIGH)
+reset_esp32_hardware() {
+    local dev="$1"
+    if [ -e "$dev" ]; then
+        echo "[bringup] pulsing RTS to perform clean hardware reset of ESP32..."
+        python3 -c "
+import serial, time
+try:
+    s = serial.Serial()
+    s.dtr = False
+    s.rts = True
+    time.sleep(0.15)
+    s.rts = False
+    s.dtr = False
+    s.close()
+    print([bringup] ESP32 normal run-mode reset complete.)
+except Exception as e:
+    print(f[bringup] WARNING: ESP32 reset failed: {e})
+" 2>/dev/null || true
+        sleep 0.3
+    fi
+}
+
 wait_for_dev "$ESP32_DEV" "ESP32 (micro-ROS)" 90
 wait_for_dev "$LIDAR_DEV" "LiDAR" 90
 wait_for_dev "$CAM_DEV" "USB camera" 30
+
+# Reset ESP32 hardware cleanly so it synchronizes clock with Linux host immediately
+reset_esp32_hardware "$ESP32_DEV"
 
 ros2 launch receptionist_robot_bringup bringup.launch.py \
     serial_port:="$ESP32_DEV" \
@@ -63,7 +89,7 @@ done
 echo "[bringup] ensuring Nav2 lifecycle is active"
 elapsed=0
 while [ "$elapsed" -lt 90 ]; do
-    if timeout 8 ros2 service call /lifecycle_manager_navigation/is_active std_srvs/srv/Trigger 2>/dev/null | grep -q 'success=True'; then
+    if timeout 8 ros2 service call /lifecycle_manager_navigation/is_active std_srvs/srv/Trigger 2>/dev/null | grep -q success=True; then
         echo "[bringup] Nav2 is active"
         break
     fi

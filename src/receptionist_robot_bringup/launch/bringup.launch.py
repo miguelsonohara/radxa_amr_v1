@@ -241,13 +241,13 @@ def generate_launch_description():
         }]
     )
 
-    # J. Wi-Fi Credentials Receiver Node
-    wifi_receiver_node = Node(
-        package='wifi_receiver',
-        executable='wifi_receiver_node',
-        name='wifi_receiver_node',
-        output='screen'
-    )
+    # J. Wi-Fi Credentials Receiver Node (Deprecated: Replaced by radxa2_agent daemon on port 5001)
+    # wifi_receiver_node = Node(
+    #     package='wifi_receiver',
+    #     executable='wifi_receiver_node',
+    #     name='wifi_receiver_node',
+    #     output='screen'
+    # )
 
     # --------------------------------------------------------------------------
     # 4. Included Launch Files (SLAM Toolbox & Nav2 Navigation)
@@ -302,7 +302,7 @@ def generate_launch_description():
     ld.add_action(filter_mask_server_node)
     ld.add_action(costmap_filter_info_server_node)
     ld.add_action(costmap_filter_lifecycle_manager_node)
-    ld.add_action(wifi_receiver_node)
+    # ld.add_action(wifi_receiver_node)
     ld.add_action(slam_toolbox_launch)
     
     # Delayed Startup (4 seconds) for Nav2 & Perception to allow TF trees to stabilize
