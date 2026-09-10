@@ -16,13 +16,10 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from rclpy.duration import Duration
-from rclpy.action import ActionClient
-
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy, QoSHistoryPolicy, qos_profile_sensor_data
 from sensor_msgs.msg import Image, LaserScan, CameraInfo
 from geometry_msgs.msg import PointStamped, PoseStamped
 from std_msgs.msg import String
-from nav2_msgs.action import NavigateToPose
 
 import tf2_ros
 import tf2_geometry_msgs
@@ -183,13 +180,15 @@ class YoloV11PoseDetectorNode(Node):
         self.publisher = self.create_publisher(Image, output_topic, 10)
         self.subscription = self.create_subscription(Image, input_topic, self.image_callback, qos_profile_sensor_data)
         
+        # Publisher for gesture goal to Behavior Tree
+        self.gesture_goal_pub = self.create_publisher(PoseStamped, '/yolo/gesture_goal', 10)
+
         status_qos = QoSProfile(
             history=QoSHistoryPolicy.KEEP_LAST,
             depth=10,
             durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
             reliability=QoSReliabilityPolicy.RELIABLE
         )
-        self.status_pub = self.create_publisher(String, status_topic, status_qos)
         self.status_sub = self.create_subscription(String, status_topic, self.general_status_callback, status_qos)
         
         self.latest_scan = None
@@ -199,16 +198,11 @@ class YoloV11PoseDetectorNode(Node):
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
         
-        self.nav_client = ActionClient(self, NavigateToPose, nav_action_server)
-        self.nav_goal_handle = None
         self.navigation_status = "IDLE"
         self.last_goal_sent_time = 0.0
-        self.last_goal_failed_time = 0.0
 
-        # Inter-Robot State Machine Initialization
+        # Current Robot State (Updated passively by Behavior Tree via /general_status)
         self.general_status = "IDLE"
-        self.target_type = "NONE"  # "PERSON" or "HOME"
-        self._publish_general_status("IDLE")
 
         # Temporal Filtering & Goal Smoothing Buffers
         self.declare_parameter('gesture_buffer_size', 10)
@@ -266,16 +260,6 @@ class YoloV11PoseDetectorNode(Node):
             self.model = YOLO(pt_model_path)
             self.get_logger().info("Fallback PyTorch model loaded successfully!")
 
-    def _publish_general_status(self, status_str):
-        """Updates internal status and publishes string to /general_status."""
-        self.general_status = status_str
-        if status_str == "IDLE":
-            self.navigation_status = "IDLE"
-            self.target_type = "NONE"
-        msg = String()
-        msg.data = status_str
-        self.status_pub.publish(msg)
-        self.get_logger().info(f"Updated and published /general_status -> '{status_str}'")
 
     # ==========================================================================
     # ROS Callbacks
@@ -314,138 +298,8 @@ class YoloV11PoseDetectorNode(Node):
                 self.get_logger().warn("CameraInfo topic received uncalibrated intrinsics (all zeros). Retaining default focal length fallback (fx=550.0).")
 
     def general_status_callback(self, msg):
-        """Listens to /general_status for inter-robot commands (e.g. 'COMEBACK', 'IDLE')."""
-        cmd = msg.data.strip().upper()
-        if cmd == "COMEBACK":
-            if self.general_status != "RETURNING_HOME":
-                self.get_logger().info("Received 'COMEBACK' command! Returning to home origin pose (0,0,0)...")
-                self._send_home_navigation_goal()
-        elif cmd == "IDLE":
-            if self.general_status != "IDLE":
-                self.get_logger().info("Received 'IDLE' command! Transitioning state to IDLE.")
-                self._publish_general_status("IDLE")
-
-    # ==========================================================================
-    # Navigation Action Dispatch & Handlers
-    # ==========================================================================
-    def send_navigation_goal(self, pose_goal):
-        if self.nav_goal_handle is not None:
-            self.get_logger().info("Canceling previous navigation target...")
-            self.nav_goal_handle.cancel_goal_async()
-            
-        self.get_logger().info("Dispatching goal target to Nav2...")
-        self.navigation_status = "PLANNING"
-        
-        if not self.nav_client.server_is_ready():
-            self.get_logger().warn("Nav2 Action Server is not ready yet!")
-            self.navigation_status = "FAILED"
-            self.last_goal_failed_time = time.time()
-            if self.target_type == "HOME":
-                self._publish_general_status("IDLE")
-                self.target_type = "NONE"
-            return
-            
-        goal_msg = NavigateToPose.Goal()
-        goal_msg.pose = pose_goal
-        
-        self.send_goal_future = self.nav_client.send_goal_async(
-            goal_msg,
-            feedback_callback=self.nav_feedback_callback
-        )
-        self.send_goal_future.add_done_callback(self.nav_goal_response_callback)
-
-    def _send_home_navigation_goal(self):
-        """Constructs home origin pose (0,0,0) and dispatches to Nav2 if not already at home."""
-        # Check if robot is already at home origin to prevent unnecessary movement
-        try:
-            if self.tf_buffer.can_transform(self.map_frame_id, self.base_frame_id, rclpy.time.Time()):
-                t_base = self.tf_buffer.lookup_transform(self.map_frame_id, self.base_frame_id, rclpy.time.Time())
-                robot_x = t_base.transform.translation.x
-                robot_y = t_base.transform.translation.y
-                
-                # Extract yaw angle from orientation quaternion
-                q = t_base.transform.rotation
-                siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
-                cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
-                robot_yaw = np.arctan2(siny_cosp, cosy_cosp)
-                
-                dist_to_home = np.sqrt((robot_x - self.home_x)**2 + (robot_y - self.home_y)**2)
-                yaw_diff = np.abs(np.arctan2(np.sin(robot_yaw - self.home_yaw), np.cos(robot_yaw - self.home_yaw)))
-                
-                if dist_to_home <= 0.15 and yaw_diff <= 0.25:
-                    self.get_logger().info(
-                        f"Robot is already at Home origin (dist={dist_to_home:.2f}m, yaw_diff={np.degrees(yaw_diff):.1f}°). Skipping home movement."
-                    )
-                    self._publish_general_status("IDLE")
-                    return
-        except Exception as tf_ex:
-            self.get_logger().warn(f"Could not verify robot pose before returning home: {tf_ex}")
-
-        self.target_type = "HOME"
-        self._publish_general_status("RETURNING_HOME")
-
-        home_pose = PoseStamped()
-        home_pose.header.frame_id = self.map_frame_id
-        home_pose.header.stamp = self.get_clock().now().to_msg()
-        home_pose.pose.position.x = self.home_x
-        home_pose.pose.position.y = self.home_y
-        
-        q_z = np.sin(self.home_yaw / 2.0)
-        q_w = np.cos(self.home_yaw / 2.0)
-        home_pose.pose.orientation.z = q_z
-        home_pose.pose.orientation.w = q_w
-
-        self.send_navigation_goal(home_pose)
-
-    def nav_goal_response_callback(self, future):
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.get_logger().warn("Navigation target REJECTED by Nav2.")
-            self.navigation_status = "FAILED"
-            self.last_goal_failed_time = time.time()
-            if self.target_type == "PERSON":
-                self.get_logger().warn("Navigation to person REJECTED by Nav2! Automatically returning home...")
-                self._send_home_navigation_goal()
-            elif self.target_type == "HOME":
-                self._publish_general_status("IDLE")
-                self.target_type = "NONE"
-            return
-            
-        self.get_logger().info("Navigation target ACCEPTED by Nav2.")
-        self.nav_goal_handle = goal_handle
-        self.navigation_status = "EXECUTING"
-        
-        self.get_result_future = goal_handle.get_result_async()
-        self.get_result_future.add_done_callback(self.nav_result_callback)
-
-    def nav_feedback_callback(self, feedback_msg):
-        pass
-
-    def nav_result_callback(self, future):
-        status = future.result().status
-        if status == 4:  # GoalStatus.STATUS_SUCCEEDED
-            self.get_logger().info("Robot successfully reached target position!")
-            self.navigation_status = "ARRIVED"
-            if self.target_type == "PERSON":
-                self.get_logger().info("Arrived at person! Transitioning to SERVE state and standing by for commands.")
-                self._publish_general_status("SERVE")
-                self.target_type = "NONE"
-            elif self.target_type == "HOME":
-                self.get_logger().info("Arrived at home pose! Transitioning back to IDLE state.")
-                self._publish_general_status("IDLE")
-                self.target_type = "NONE"
-        else:
-            self.get_logger().warn(f"Navigation failed or aborted (status={status})")
-            self.navigation_status = "FAILED"
-            self.last_goal_failed_time = time.time()
-            if self.target_type == "PERSON":
-                self.get_logger().warn("Navigation to person stopped/failed. Transitioning to IDLE state.")
-                self._publish_general_status("IDLE")
-                self.target_type = "NONE"
-            elif self.target_type == "HOME":
-                self._publish_general_status("IDLE")
-                self.target_type = "NONE"
-        self.nav_goal_handle = None
+        """Passively listens to /general_status from Behavior Tree to update HUD."""
+        self.general_status = msg.data.strip().upper()
 
     # ==========================================================================
     # Main Image Pipeline Callback
@@ -520,26 +374,18 @@ class YoloV11PoseDetectorNode(Node):
         if self.navigation_status == "FAILED" and (cur_time - self.last_goal_failed_time) > 5.0:
             self.navigation_status = "IDLE"
 
-        # 4. Handle Navigation Action Triggering
+        # 4. Handle Gesture Goal Publishing to Behavior Tree
         if self.gesture_active and target_goal_pose is not None:
-            if self.general_status in ["IDLE", "SERVE"] and self.navigation_status in ["IDLE", "ARRIVED"]:
-                if (cur_time - self.last_goal_sent_time) > self.goal_cooldown_sec:
-                    if target_goal_pose == "ALREADY_THERE":
-                        self.get_logger().info("Robot is already at target safety distance. Transitioning to SERVE state.")
-                        self.navigation_status = "ARRIVED"
-                        self._publish_general_status("SERVE")
-                        self.target_type = "NONE"
-                    elif isinstance(target_goal_pose, PoseStamped):
-                        self.get_logger().info(f"Gesture triggered! Dispatching navigation goal towards person (state: {self.general_status})...")
-                        self.last_goal_sent_time = cur_time
-                        self.target_type = "PERSON"
-                        self.send_navigation_goal(target_goal_pose)
-            else:
-                if not hasattr(self, '_last_gesture_block_log') or (cur_time - self._last_gesture_block_log) > 3.0:
-                    self._last_gesture_block_log = cur_time
-                    self.get_logger().warn(
-                        f"Hand-wave gesture detected, but ignored because robot is busy in state: general_status='{self.general_status}', nav_status='{self.navigation_status}'."
+            if (cur_time - self.last_goal_sent_time) > self.goal_cooldown_sec:
+                if isinstance(target_goal_pose, PoseStamped):
+                    self.last_goal_sent_time = cur_time
+                    self.get_logger().info(
+                        f"Hand-wave gesture detected! Publishing goal pose to /yolo/gesture_goal: "
+                        f"x={target_goal_pose.pose.position.x:.2f}, y={target_goal_pose.pose.position.y:.2f}"
                     )
+                    self.gesture_goal_pub.publish(target_goal_pose)
+                elif target_goal_pose == "ALREADY_THERE":
+                    self.get_logger().info("Robot is already at target safety distance.")
 
         # 4. Performance FPS & HUD Render
         inf_time_ms = (time.time() - start_time) * 1000.0

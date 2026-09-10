@@ -1,5 +1,6 @@
 ekf_filter_node:
   ros__parameters:
+    # Set frequency to 20.0Hz to match ESP32-S3 micro-ROS state machine execution rate (20Hz / 50ms period)
     frequency: 20.0
     two_d_mode: true
     publish_tf: true
@@ -14,9 +15,9 @@ ekf_filter_node:
     # --------------------------------------------------------------------------
     odom0: /odom
     odom0_config: [true,  true,  false,   # x, y, z position
-                   false, false, true,    # roll, pitch, yaw orientation (FUSED to anchor robot yaw)
+                   false, false, false,   # roll, pitch, yaw orientation
                    true,  false, false,   # vx (true), vy (false - non-holonomic), vz (false)
-                   false, false, true,    # vroll, vpitch, vyaw angular velocity (FUSED to stop spinning drift!)
+                   false, false, false,   # vroll, vpitch, vyaw angular velocity
                    false, false, false]   # ax, ay, az acceleration
     odom0_differential: false
     odom0_queue_size: 10
@@ -28,7 +29,7 @@ ekf_filter_node:
     imu0_config: [false, false, false,   # x, y, z position
                   false, false, false,   # roll, pitch, yaw orientation (DISABLED to eliminate time-accumulated gyro drift!)
                   false, false, false,   # vx, vy, vz linear velocity
-                  false, false, true,    # vroll, vpitch, vyaw angular velocity
+                  false, false, true,    # vroll, vpitch, vyaw angular velocity (Z-Gyro rate for turn precision & slip resistance)
                   false, false, false]   # ax, ay, az linear acceleration
     imu0_differential: false
     imu0_relative: false

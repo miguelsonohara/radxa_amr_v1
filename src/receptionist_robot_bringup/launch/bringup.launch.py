@@ -199,6 +199,14 @@ def generate_launch_description():
         output='screen'
     )
 
+    # H2. AMR Central Behavior Tree Node
+    amr_bt_node = Node(
+        package='receptionist_robot_behavior',
+        executable='amr_bt_node',
+        name='amr_bt_node',
+        output='screen'
+    )
+
     # I. Nav2 Keepout Filter Nodes (Restricted Stair/Hole Zones)
     mask_yaml_file = '/home/radxa/receptionist_robot_ws/map/keepout_mask.yaml'
     
@@ -305,12 +313,13 @@ def generate_launch_description():
     # ld.add_action(wifi_receiver_node)
     ld.add_action(slam_toolbox_launch)
     
-    # Delayed Startup (4 seconds) for Nav2 & Perception to allow TF trees to stabilize
+    # Delayed Startup (4 seconds) for Nav2, Perception & Behavior Tree to allow TF trees to stabilize
     delayed_nav2_and_perception = TimerAction(
-        period=4.0,
+        period=10.0,
         actions=[
             yolo_pose_node,
-            nav2_navigation_launch
+            nav2_navigation_launch,
+            amr_bt_node
         ]
     )
     ld.add_action(delayed_nav2_and_perception)

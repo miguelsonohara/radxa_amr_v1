@@ -207,10 +207,17 @@ def control_bringup_service(action: str):
     """Starts, stops, or restarts robot_bringup.service."""
     action = action.strip().lower()
     if action not in ["start", "stop", "restart", "status"]:
-        return False, f"Hành động không hợp lệ: {action}"
+        return False, f"Hành động không hợp lệ: '{action}'. Chỉ hỗ trợ: 'start', 'stop', 'restart', 'status'"
     
     if action == "status":
-        return True, "Trạng thái dịch vụ"
+        res = subprocess.run(["systemctl", "is-active", SERVICE_NAME], capture_output=True, text=True)
+        is_active = (res.stdout.strip() == "active")
+        return is_active, res.stdout.strip()
+
+    if action == "restart":
+        restart_bringup_service()
+        return True, f"Đang khởi động lại dịch vụ {SERVICE_NAME}..."
+
     cmd = ["sudo", "systemctl", action, SERVICE_NAME]
     res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode == 0:
@@ -222,9 +229,9 @@ def control_bringup_service(action: str):
 def restart_bringup_service():
     """Restarts robot_bringup.service in a background thread."""
     def _restart():
-        print(f"[radxa2_agent] Restarting {SERVICE_NAME} via systemctl...")
+        print(f"[radxa2_agent] Restarting {SERVICE_NAME} via systemctl in background...")
         subprocess.run(["sudo", "systemctl", "restart", SERVICE_NAME], check=False)
-        print(f"[radxa2_agent] Restart of {SERVICE_NAME} triggered.")
+        print(f"[radxa2_agent] Background restart of {SERVICE_NAME} completed.")
 
     t = threading.Thread(target=_restart, daemon=True)
     t.start()
@@ -238,9 +245,25 @@ class Radxa2AgentNode(Node):
         # Publisher to /goal_pose for Nav2 navigation
         self.goal_pub = self.create_publisher(PoseStamped, '/goal_pose', 10)
 
+        # Publisher to /amr/command for Behavior Tree
+        self.cmd_pub = self.create_publisher(String, '/amr/command', 10)
+
+        # Live robot state from Behavior Tree via /general_status
+        self.current_robot_state = "IDLE"
+        self.create_subscription(String, '/general_status', self._on_general_status, 10)
+
         # Service clients for SLAM Toolbox serialize_map and save_map
         self.serialize_client = self.create_client(SerializePoseGraph, '/slam_toolbox/serialize_map')
         self.save_map_client = self.create_client(SaveMap, '/slam_toolbox/save_map')
+
+    def _on_general_status(self, msg: String):
+        self.current_robot_state = msg.data.strip().upper()
+
+    def send_amr_command(self, cmd_str: str):
+        msg = String()
+        msg.data = cmd_str
+        self.cmd_pub.publish(msg)
+        self.get_logger().info(f"Dispatched AMR command: '{cmd_str}'")
 
     def get_current_pose(self):
         """Returns stored home pose as fallback (TF listener removed to save CPU)."""
@@ -348,14 +371,19 @@ def make_request_handler(ros_node: Radxa2AgentNode):
                 # Optional: also check if SLAM node is discovered in ROS 2 graph
                 node_names = ros_node.get_node_names()
                 slam_node_alive = "slam_toolbox" in node_names or "async_slam_toolbox_node" in node_names
+                bt_node_alive = "amr_bt_node" in node_names
+                nav2_alive = "controller_server" in node_names and "bt_navigator" in node_names
 
                 self._send_json({
                     "mode": mode,
+                    "robot_state": getattr(ros_node, "current_robot_state", "IDLE"),
                     "home_pose": home_pose,
                     "current_map": current_map,
                     "current_map_name": os.path.basename(current_map) if current_map else "",
                     "last_saved_map": get_last_saved_map(),
                     "slam_active": slam_active or slam_node_alive,
+                    "bt_active": bt_node_alive,
+                    "nav2_active": nav2_alive,
                     "bringup_service_active": slam_active
                 })
             elif self.path == "/api/robot/maps":
@@ -557,11 +585,12 @@ def make_request_handler(ros_node: Radxa2AgentNode):
                 elif action == "go_home":
                     home_pose = get_stored_home_pose()
                     x, y, yaw = home_pose[0], home_pose[1], home_pose[2]
-                    ros_node.publish_goal_pose(x, y, yaw)
+                    # Trigger Navigation via Behavior Tree
+                    ros_node.send_amr_command("GO_HOME")
                     self._send_json({
                         "success": True,
                         "home_pose": [x, y, yaw],
-                        "message": f"Dispatched navigation goal to Home pose: x={x}, y={y}, yaw={yaw}"
+                        "message": f"Dispatched navigation goal to Home pose via Behavior Tree: x={x}, y={y}, yaw={yaw}"
                     })
 
                 else:
@@ -570,6 +599,27 @@ def make_request_handler(ros_node: Radxa2AgentNode):
                         "message": f"Unknown action: '{action}'. Supported actions: 'set_home', 'go_home'"
                     }, 400)
 
+            # ------------------------------------------------------------------
+            # d) POST /api/robot/cancel
+            # ------------------------------------------------------------------
+            elif self.path == "/api/robot/cancel":
+                ros_node.send_amr_command("CANCEL")
+                self._send_json({
+                    "success": True,
+                    "message": "Dispatched CANCEL command to Behavior Tree."
+                })
+
+            # ------------------------------------------------------------------
+            # e) POST /api/robot/bringup
+            # ------------------------------------------------------------------
+            elif self.path == "/api/robot/bringup":
+                action = data.get("action", "").strip().lower()
+                ok, msg = control_bringup_service(action)
+                self._send_json({
+                    "success": ok,
+                    "action": action,
+                    "message": msg
+                }, 200 if ok else 500)
 
             else:
                 self._send_json({"success": False, "message": f"Endpoint '{self.path}' not found"}, 404)

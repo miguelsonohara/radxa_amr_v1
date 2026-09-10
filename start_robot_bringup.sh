@@ -14,7 +14,7 @@ source /home/radxa/receptionist_robot_ws/install/setup.bash
 export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
 export ROS_DOMAIN_ID=0
 unset ROS_LOCALHOST_ONLY
-export ROS_STATIC_PEERS="10.254.254.1"
+export ROS_STATIC_PEERS="10.254.254.1;192.168.16.28;192.168.16.27"
 
 ESP32_DEV="/dev/serial/by-id/usb-1a86_USB_Single_Serial_5C36140582-if00"
 LIDAR_DEV="/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_fcefc1eb0664ef118210e1a9c169b110-if00-port0"
@@ -46,18 +46,18 @@ reset_esp32_hardware() {
         python3 -c "
 import serial, time
 try:
-    s = serial.Serial()
+    s = serial.Serial('$dev', 115200)
     s.dtr = False
     s.rts = True
-    time.sleep(0.15)
+    time.sleep(0.2)
     s.rts = False
     s.dtr = False
     s.close()
-    print([bringup] ESP32 normal run-mode reset complete.)
+    print('[bringup] ESP32 normal run-mode reset complete.')
 except Exception as e:
-    print(f[bringup] WARNING: ESP32 reset failed: {e})
+    print(f'[bringup] WARNING: ESP32 reset failed: {e}')
 " 2>/dev/null || true
-        sleep 0.3
+        sleep 0.5
     fi
 }
 
@@ -74,27 +74,28 @@ ros2 launch receptionist_robot_bringup bringup.launch.py \
     camera_device:="$CAM_DEV" \
     use_sim_time:=false &
 LAUNCH_PID=$!
+trap 'echo "[bringup] shutting down..."; kill -TERM "$LAUNCH_PID" 2>/dev/null; wait "$LAUNCH_PID"' TERM INT
 
 echo "[bringup] waiting for ESP32 /odom before confirming Nav2..."
 elapsed=0
-while [ "$elapsed" -lt 120 ]; do
-    if timeout 2 ros2 topic echo /odom --once >/dev/null 2>&1; then
+while [ "$elapsed" -lt 60 ]; do
+    if timeout 8 ros2 topic echo /odom --once >/dev/null 2>&1; then
         echo "[bringup] /odom is publishing"
         break
     fi
-    sleep 1
-    elapsed=$((elapsed + 1))
+    sleep 2
+    elapsed=$((elapsed + 2))
 done
 
 echo "[bringup] ensuring Nav2 lifecycle is active"
 elapsed=0
 while [ "$elapsed" -lt 90 ]; do
-    if timeout 8 ros2 service call /lifecycle_manager_navigation/is_active std_srvs/srv/Trigger 2>/dev/null | grep -q success=True; then
+    if timeout 6 ros2 lifecycle get /controller_server 2>/dev/null | grep -q "active \[3\]"; then
         echo "[bringup] Nav2 is active"
         break
     fi
-    echo "[bringup] Nav2 not active yet — retry STARTUP"
-    timeout 25 ros2 service call /lifecycle_manager_navigation/manage_nodes \
+    echo "[bringup] Nav2 not active yet — retry STARTUP via lifecycle manager"
+    timeout 15 ros2 service call /lifecycle_manager_navigation/manage_nodes \
         nav2_msgs/srv/ManageLifecycleNodes '{command: 0}' >/dev/null 2>&1 || true
     sleep 3
     elapsed=$((elapsed + 3))
