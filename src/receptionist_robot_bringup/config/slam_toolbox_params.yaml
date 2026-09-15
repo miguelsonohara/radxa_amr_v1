@@ -56,7 +56,7 @@ slam_toolbox:
     # SLAM operation mode.
     # Options: mapping (build a map from scratch) or localization (localize in a loaded map).
     mode: localization
-    map_file_name: /home/radxa/receptionist_robot_ws/map/demo_map2
+    map_file_name: /home/radxa/receptionist_robot_ws/map/demo_map3
 
     # mode: mapping
 
@@ -77,11 +77,11 @@ slam_toolbox:
 
     # Minimum distance (meters) the robot must move before processing a new scan.
     # Tuning: Set to 0.25m in localization mode so SLAM maintains a lightweight graph without memory bloat.
-    minimum_travel_distance: 0.25
+    minimum_travel_distance: 0.02
 
     # Minimum heading change (radians) the robot must rotate before processing a new scan.
     # Tuning: Set to 0.25 rad (~14 deg) to avoid inserting excessive rotational nodes.
-    minimum_travel_heading: 0.25
+    minimum_travel_heading: 0.02
 
     # If true, both distance AND heading threshold must be met to process a scan.
     # If false, either threshold being met triggers a scan update (default, safer).

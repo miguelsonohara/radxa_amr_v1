@@ -17,7 +17,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.duration import Duration
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy, QoSHistoryPolicy, qos_profile_sensor_data
-from sensor_msgs.msg import Image, LaserScan, CameraInfo
+from sensor_msgs.msg import Image, LaserScan, CameraInfo, CompressedImage
 from geometry_msgs.msg import PointStamped, PoseStamped
 from std_msgs.msg import String
 
@@ -75,7 +75,8 @@ class YoloV11PoseDetectorNode(Node):
         self.declare_parameter('nms_threshold', 0.45)
         self.declare_parameter('kp_conf_threshold', 0.4)
         self.declare_parameter('onnx_input_size', 320)
-        self.declare_parameter('onnx_threads', 4)
+        self.declare_parameter('onnx_threads', 2)
+        self.declare_parameter('inference_rate_hz', 3.0)
         
         self.declare_parameter('focal_length_x', 550.0)
         self.declare_parameter('focal_length_y', 550.0)
@@ -126,6 +127,7 @@ class YoloV11PoseDetectorNode(Node):
         self.kp_conf_threshold = self.get_parameter('kp_conf_threshold').value
         self.onnx_input_size = self.get_parameter('onnx_input_size').value
         self.onnx_threads = self.get_parameter('onnx_threads').value
+        self.inference_rate_hz = float(self.get_parameter('inference_rate_hz').value)
         
         self.f_x = self.get_parameter('focal_length_x').value
         self.f_y = self.get_parameter('focal_length_y').value
@@ -178,6 +180,7 @@ class YoloV11PoseDetectorNode(Node):
         # ----------------------------------------------------------------------
         self.bridge = CvBridge()
         self.publisher = self.create_publisher(Image, output_topic, 10)
+        self.compressed_publisher = self.create_publisher(CompressedImage, output_topic + '/compressed', 10)
         self.subscription = self.create_subscription(Image, input_topic, self.image_callback, qos_profile_sensor_data)
         
         # Publisher for gesture goal to Behavior Tree
@@ -219,6 +222,7 @@ class YoloV11PoseDetectorNode(Node):
         # Visual Telemetry Stats
         self.prev_time = 0.0
         self.fps = 0.0
+        self.last_inference_time = 0.0
         self.tracker_mode = "Mono Est"
         self.fused_distance = 0.0
         self.gesture_active = False
@@ -305,7 +309,13 @@ class YoloV11PoseDetectorNode(Node):
     # Main Image Pipeline Callback
     # ==========================================================================
     def image_callback(self, msg):
-        start_time = time.time()
+        cur_time = time.time()
+        min_interval = 1.0 / max(0.1, self.inference_rate_hz)
+        if (cur_time - self.last_inference_time) < min_interval:
+            return
+        self.last_inference_time = cur_time
+
+        start_time = cur_time
         
         try:
             if msg.encoding in ['mjpeg', '8UC1', 'jpeg', 'compressed'] or (len(msg.data) > 0 and msg.encoding not in ['bgr8', 'rgb8']):
@@ -399,6 +409,19 @@ class YoloV11PoseDetectorNode(Node):
             self.publisher.publish(pub_msg)
         except Exception as e:
             self.get_logger().error(f"Debug image publishing failed: {e}")
+
+        # 5b. Publish Compressed Image (JPEG quality 70) to eliminate Wi-Fi bandwidth congestion
+        try:
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 70]
+            success, enc_img = cv2.imencode('.jpg', annotated_img, encode_param)
+            if success:
+                comp_msg = CompressedImage()
+                comp_msg.header = msg.header
+                comp_msg.format = "jpeg"
+                comp_msg.data = enc_img.tobytes()
+                self.compressed_publisher.publish(comp_msg)
+        except Exception as e:
+            pass
 
     # ==========================================================================
     # Inference Helpers
@@ -1071,9 +1094,10 @@ class YoloV11PoseDetectorNode(Node):
         cv2.putText(img, "YOLOv11 SENSOR FUSION", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLOR_EMERALD, 1, cv2.LINE_AA)
         cv2.line(img, (20, 38), (10 + hud_w - 10, 38), COLOR_EMERALD, 1)
 
-        backend_name = "ONNX Runtime (CPU-4T)" if self.use_onnx else "PyTorch (CPU)"
+        threads_str = f"{self.onnx_threads}T"
+        backend_name = f"ONNX Runtime (CPU-{threads_str})" if self.use_onnx else "PyTorch (CPU)"
         cv2.putText(img, f"Engine: {backend_name}", (20, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.4, COLOR_WHITE, 1, cv2.LINE_AA)
-        cv2.putText(img, f"FPS: {self.fps:.1f}", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.4, COLOR_WHITE, 1, cv2.LINE_AA)
+        cv2.putText(img, f"FPS: {self.fps:.1f} (Cap: {self.inference_rate_hz:.0f}Hz)", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.4, COLOR_WHITE, 1, cv2.LINE_AA)
         cv2.putText(img, f"Latency: {inf_time_ms:.1f} ms", (20, 86), cv2.FONT_HERSHEY_SIMPLEX, 0.4, COLOR_WHITE, 1, cv2.LINE_AA)
 
         dist_str = f"Range: {self.fused_distance:.2f} m ({self.tracker_mode})" if num_persons > 0 else "Range: N/A"

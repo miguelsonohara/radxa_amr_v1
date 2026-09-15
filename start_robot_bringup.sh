@@ -61,6 +61,22 @@ except Exception as e:
     fi
 }
 
+# Ensure system clock is synchronized with NTP if network is available
+# (Prevents a 14-hour clock jump after micro-ROS connects, which breaks EKF & TF)
+echo "[bringup] waiting for system clock synchronization (NTP)..."
+sync_elapsed=0
+while [ "$sync_elapsed" -lt 20 ]; do
+    if timedatectl 2>/dev/null | grep -q "System clock synchronized: yes"; then
+        echo "[bringup] system clock synchronized: $(date)"
+        break
+    fi
+    sleep 1
+    sync_elapsed=$((sync_elapsed + 1))
+done
+if [ "$sync_elapsed" -ge 20 ]; then
+    echo "[bringup] WARNING: NTP sync timed out after 20s. Proceeding with system time $(date)"
+fi
+
 wait_for_dev "$ESP32_DEV" "ESP32 (micro-ROS)" 90
 wait_for_dev "$LIDAR_DEV" "LiDAR" 90
 wait_for_dev "$CAM_DEV" "USB camera" 30
