@@ -41,14 +41,24 @@ ros2 run tf2_tools view_frames
 ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p stamped:=true
 
-# Service (User Services - Không cần sudo)
-## Robot Bringup:
-systemctl --user daemon-reload && systemctl --user enable --now robot_bringup.service
-systemctl --user restart robot_bringup.service
-systemctl --user stop robot_bringup.service
-systemctl --user status robot_bringup.service
+# Services
+## 1. Robot Bringup (System Service - cần sudo):
+# Reset / Restart service (để nạp lại config mới):
+sudo systemctl restart robot_bringup.service
 
-## Video Kiosk:
+# Reset trạng thái nếu service bị crash/failed:
+sudo systemctl reset-failed robot_bringup.service
+
+# Kiểm tra trạng thái:
+sudo systemctl status robot_bringup.service
+
+# Xem log trực tiếp:
+journalctl -u robot_bringup.service -f
+
+# Dừng service:
+sudo systemctl stop robot_bringup.service
+
+## 2. Video Kiosk (User Service - không cần sudo):
 systemctl --user daemon-reload && systemctl --user enable --now play_video.service
 systemctl --user restart play_video.service
 systemctl --user stop play_video.service

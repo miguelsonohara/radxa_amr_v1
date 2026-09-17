@@ -71,9 +71,10 @@ class YoloV11PoseDetectorNode(Node):
         
         self.declare_parameter('workspace_dir', '/home/radxa/receptionist_robot_ws')
         self.declare_parameter('model_name', 'yolo11n-pose.onnx')
-        self.declare_parameter('conf_threshold', 0.4)
+        # Confidence thresholds tuned to 0.70 / 0.50 to eliminate false positive detections on non-human objects (e.g. toys, figurines)
+        self.declare_parameter('conf_threshold', 0.7)
         self.declare_parameter('nms_threshold', 0.45)
-        self.declare_parameter('kp_conf_threshold', 0.4)
+        self.declare_parameter('kp_conf_threshold', 0.5)
         self.declare_parameter('onnx_input_size', 320)
         self.declare_parameter('onnx_threads', 2)
         self.declare_parameter('inference_rate_hz', 3.0)
@@ -88,7 +89,7 @@ class YoloV11PoseDetectorNode(Node):
         self.declare_parameter('base_frame_id', 'base_link')
         self.declare_parameter('map_frame_id', 'map')
         
-        self.declare_parameter('safety_distance', 1.0)
+        self.declare_parameter('safety_distance', 0.7)
         self.declare_parameter('camera_mount_x', -0.045)
         self.declare_parameter('camera_mount_y', 0.0)
         self.declare_parameter('camera_mount_z', 1.07)
@@ -201,15 +202,14 @@ class YoloV11PoseDetectorNode(Node):
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
         
-        self.navigation_status = "IDLE"
         self.last_goal_sent_time = 0.0
 
         # Current Robot State (Updated passively by Behavior Tree via /general_status)
         self.general_status = "IDLE"
 
         # Temporal Filtering & Goal Smoothing Buffers
-        self.declare_parameter('gesture_buffer_size', 10)
-        self.declare_parameter('gesture_trigger_threshold', 7)
+        self.declare_parameter('gesture_buffer_size', 5)
+        self.declare_parameter('gesture_trigger_threshold', 3)
         self.declare_parameter('smooth_buffer_size', 5)
 
         gesture_buf_size = self.get_parameter('gesture_buffer_size').value
@@ -380,11 +380,7 @@ class YoloV11PoseDetectorNode(Node):
 
         cur_time = time.time()
 
-        # 3. Auto-reset FAILED status to IDLE after 5-second failure cooldown
-        if self.navigation_status == "FAILED" and (cur_time - self.last_goal_failed_time) > 5.0:
-            self.navigation_status = "IDLE"
-
-        # 4. Handle Gesture Goal Publishing to Behavior Tree
+        # 3. Handle Gesture Goal Publishing to Behavior Tree
         if self.gesture_active and target_goal_pose is not None:
             if (cur_time - self.last_goal_sent_time) > self.goal_cooldown_sec:
                 if isinstance(target_goal_pose, PoseStamped):
@@ -1085,7 +1081,7 @@ class YoloV11PoseDetectorNode(Node):
 
     def _draw_hud(self, img, inf_time_ms, num_persons):
         """Renders HUD telemetry overlay panel."""
-        hud_w, hud_h = 240, 180
+        hud_w, hud_h = 240, 160
         hud_overlay = img.copy()
         cv2.rectangle(hud_overlay, (10, 10), (10 + hud_w, 10 + hud_h), COLOR_DARK_GRAY, -1)
         cv2.addWeighted(hud_overlay, 0.65, img, 0.35, 0, img)
@@ -1109,12 +1105,7 @@ class YoloV11PoseDetectorNode(Node):
 
         status_color = COLOR_EMERALD if self.general_status in ["SERVE", "IDLE"] else COLOR_AMBER
         cv2.putText(img, f"Robot State: {self.general_status}", (20, 134), cv2.FONT_HERSHEY_SIMPLEX, 0.4, status_color, 1, cv2.LINE_AA)
-
-        nav_color = COLOR_EMERALD if self.navigation_status in ["ARRIVED", "EXECUTING"] else (
-            COLOR_CRIMSON if self.navigation_status == "FAILED" else COLOR_WHITE
-        )
-        cv2.putText(img, f"Nav Status: {self.navigation_status}", (20, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.4, nav_color, 1, cv2.LINE_AA)
-        cv2.putText(img, f"Detections: {num_persons}", (20, 166), cv2.FONT_HERSHEY_SIMPLEX, 0.4, COLOR_WHITE, 1, cv2.LINE_AA)
+        cv2.putText(img, f"Detections: {num_persons}", (20, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.4, COLOR_WHITE, 1, cv2.LINE_AA)
 
 
 def main(args=None):

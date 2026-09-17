@@ -77,12 +77,19 @@ class AmrBehaviorTreeNode(Node):
             10
         )
 
-        # Commands from Radxa Tầng Trên or manual scripts
+        # Commands from Radxa Tầng Trên or manual scripts.
+        # Durability is strictly VOLATILE so discrete trigger commands are never latched or re-executed upon service restart.
+        cmd_qos = QoSProfile(
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=10,
+            durability=QoSDurabilityPolicy.VOLATILE,
+            reliability=QoSReliabilityPolicy.RELIABLE
+        )
         self.cmd_sub = self.create_subscription(
             String,
             '/amr/command',
             self.command_callback,
-            10
+            cmd_qos
         )
 
         # RViz 2D Goal Pose listener
@@ -90,14 +97,6 @@ class AmrBehaviorTreeNode(Node):
             PoseStamped,
             '/goal_pose',
             self.rviz_goal_callback,
-            10
-        )
-
-        # Legacy /general_status listener for 'COMEBACK' command
-        self.legacy_cmd_sub = self.create_subscription(
-            String,
-            '/general_status_cmd',
-            self.legacy_cmd_callback,
             10
         )
 
@@ -146,8 +145,6 @@ class AmrBehaviorTreeNode(Node):
             self.bb.save_map_filename = filename
             self.bb.upper_goal = {"type": "SAVE_MAP"}
 
-    def legacy_cmd_callback(self, msg: String):
-        self.command_callback(msg)
 
     def tree_tick(self):
         """Ticks the Behavior Tree at 10Hz and broadcasts status changes."""

@@ -196,6 +196,12 @@ def generate_launch_description():
         package='yolov11_pose_detector',
         executable='pose_detector_node',
         name='yolov11_pose_detector',
+        parameters=[{
+            'conf_threshold': 0.7,
+            'kp_conf_threshold': 0.5,
+            'gesture_buffer_size': 5,
+            'gesture_trigger_threshold': 3
+        }],
         output='screen'
     )
 
