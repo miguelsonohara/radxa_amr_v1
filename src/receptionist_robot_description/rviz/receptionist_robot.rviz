@@ -49,7 +49,7 @@ Visualization Manager:
       Description Source: Topic
       Description Topic:
         Depth: 5
-        Durability: Volatile
+        Durability: Transient Local
         History: Keep Last
         Reliability: Reliable
         Value: /robot_description
@@ -150,6 +150,49 @@ Visualization Manager:
         History: Keep Last
         Reliability: Reliable
         Value: /local_plan
+      Value: true
+    - Alpha: 0.6
+      Binary representation: false
+      Binary threshold: 100
+      Class: rviz_default_plugins/Map
+      Color Scheme: costmap
+      Draw Behind: false
+      Enabled: true
+      Name: Local Costmap (Inflation)
+      Topic:
+        Depth: 1
+        Durability: Transient Local
+        History: Keep Last
+        Reliability: Reliable
+        Value: /local_costmap/costmap
+      Value: true
+    - Alpha: 0.5
+      Binary representation: false
+      Binary threshold: 100
+      Class: rviz_default_plugins/Map
+      Color Scheme: costmap
+      Draw Behind: false
+      Enabled: false
+      Name: Global Costmap (Inflation)
+      Topic:
+        Depth: 1
+        Durability: Transient Local
+        History: Keep Last
+        Reliability: Reliable
+        Value: /global_costmap/costmap
+      Value: false
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz_default_plugins/Polygon
+      Color: 255; 200; 0
+      Enabled: true
+      Name: Robot Radius (Footprint)
+      Topic:
+        Depth: 5
+        Durability: Transient Local
+        History: Keep Last
+        Reliability: Reliable
+        Value: /local_costmap/published_footprint
       Value: true
   Enabled: true
   Global Options:

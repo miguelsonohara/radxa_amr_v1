@@ -20,6 +20,53 @@ ESP32_DEV="/dev/serial/by-id/usb-1a86_USB_Single_Serial_5C36140582-if00"
 LIDAR_DEV="/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_fcefc1eb0664ef118210e1a9c169b110-if00-port0"
 CAM_DEV="/dev/my_camera"
 
+detect_camera_dev() {
+    # 1. Prefer /dev/my_camera if created by udev
+    if [ -e "/dev/my_camera" ]; then
+        echo "/dev/my_camera"
+        return 0
+    fi
+    # 2. Check /dev/v4l/by-id/* (excluding internal video-codec)
+    for dev in /dev/v4l/by-id/*; do
+        if [ -e "$dev" ] && [[ "$dev" != *"video-codec"* ]]; then
+            echo "$dev"
+            return 0
+        fi
+    done
+    # 3. Check any video4linux device that is NOT qcom-venus
+    for dev in /sys/class/video4linux/video*; do
+        if [ -d "$dev" ]; then
+            local devname
+            devname="$(cat "$dev/name" 2>/dev/null || true)"
+            if [[ "$devname" != *"qcom-venus"* && -n "$devname" ]]; then
+                echo "/dev/$(basename "$dev")"
+                return 0
+            fi
+        fi
+    done
+    return 1
+}
+
+wait_for_camera() {
+    local timeout_s="${1:-30}"
+    local elapsed=0
+    echo "[bringup] waiting for USB camera..."
+    while [ "$elapsed" -lt "$timeout_s" ]; do
+        local cam
+        cam="$(detect_camera_dev 2>/dev/null || true)"
+        if [ -n "$cam" ] && [ -e "$cam" ]; then
+            echo "[bringup] USB camera ready: $cam"
+            CAM_DEV="$cam"
+            return 0
+        fi
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+    echo "[bringup] WARNING: USB camera not found after ${timeout_s}s — launching anyway"
+    CAM_DEV="/dev/my_camera"
+    return 1
+}
+
 wait_for_dev() {
     local path="$1"
     local label="$2"
@@ -79,7 +126,7 @@ fi
 
 wait_for_dev "$ESP32_DEV" "ESP32 (micro-ROS)" 90
 wait_for_dev "$LIDAR_DEV" "LiDAR" 90
-wait_for_dev "$CAM_DEV" "USB camera" 30
+wait_for_camera 30
 
 # Reset ESP32 hardware cleanly so it synchronizes clock with Linux host immediately
 reset_esp32_hardware "$ESP32_DEV"

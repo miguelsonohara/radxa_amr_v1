@@ -106,6 +106,12 @@ def generate_launch_description():
         description='Video device path for usb_cam'
     )
 
+    declare_camera_pixel_format = DeclareLaunchArgument(
+        'camera_pixel_format',
+        default_value='mjpeg',
+        description='Pixel format for usb_cam (mjpeg, yuyv, raw_mjpeg)'
+    )
+
     # --------------------------------------------------------------------------
     # 3. Node Declarations
     # --------------------------------------------------------------------------
@@ -185,7 +191,7 @@ def generate_launch_description():
             'video_device': LaunchConfiguration('camera_device'),
             'image_width': 640,
             'image_height': 480,
-            'pixel_format': 'raw_mjpeg',
+            'pixel_format': LaunchConfiguration('camera_pixel_format'),
             'io_method': 'mmap'
         }],
         output='screen'
@@ -306,6 +312,7 @@ def generate_launch_description():
     ld.add_action(declare_scan_mode)
     ld.add_action(declare_lidar_model)
     ld.add_action(declare_camera_device)
+    ld.add_action(declare_camera_pixel_format)
     
     # Add Core Driver & Hardware Nodes Immediately
     ld.add_action(micro_ros_agent_node)

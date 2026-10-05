@@ -32,13 +32,14 @@ graph TD
     %% Lidar[RPLidar Sensor] -->|USB Serial @ 460800| LidarDriver
     Lidar[HCLiDAR Sensor] -->|USB Serial @ 115200| LidarDriver
     ColMon -->|/cmd_vel | MicroAgent
-    MicroAgent -->|UART @ 115200| StateM
+    MicroAgent -->|UART @ 921600| StateM
     StateM -->|Velocity Target| PID
     PID -->|PWM Signals| LEDC
     LEDC -->|Voltage| Motors[DC Motors]
     EncT[Encoders] -->|Interrupts| Enc
     Enc -->|Feedback| PID
     PID -->|/odom & /tf| StateM
+    StateM -->|/imu (MPU9250)| MicroAgent
     StateM -->|micro-ROS Transport| MicroAgent
 ```
 
@@ -51,7 +52,8 @@ graph TD
 | `/cmd_vel` | `geometry_msgs/msg/TwistStamped` | Collision Monitor / Teleop | ESP32-S3 | Final safe movement commands. |
 | `/cmd_vel_nav` | `geometry_msgs/msg/TwistStamped` | Nav2 Controller | ESP32-S3 | Autonomous navigation commands. |
 | `/cmd_vel_smoothed`| `geometry_msgs/msg/Twist` | Velocity Smoother | Collision Monitor | Smoothed output from Nav2. |
-| `/odom` | `nav_msgs/msg/Odometry` | ESP32-S3 | Nav2 / SLAM | Dual-wheel encoder-derived odometry. |
+| `/odom` | `nav_msgs/msg/Odometry` | ESP32-S3 | Nav2 / SLAM / EKF | Dual-wheel encoder-derived odometry (20Hz). |
+| `/imu` | `sensor_msgs/msg/Imu` | ESP32-S3 | EKF (`robot_localization`) | MPU9250 6-DOF / 9-DOF IMU orientation & gyro rate (target 50Hz). |
 | `/tf` | `tf2_msgs/msg/TFMessage` | ESP32-S3 / Robot State Pub | TF Tree | Coordinate transformations ($odom \rightarrow base\_link$, etc.). |
 <!-- | `/scan` | `sensor_msgs/msg/LaserScan` | RPLidar Driver | SLAM / Nav2 | Laser range scans for obstacle avoidance. | -->
 | `/scan` | `sensor_msgs/msg/LaserScan` | HCLiDAR Driver | SLAM / Nav2 | Laser range scans for obstacle avoidance. |
@@ -84,10 +86,14 @@ The ROS 2 driver package for the HCLiDAR / Camsense sensor, configured to publis
 
 ## 4. ESP32-S3 MCU Firmware Summary
 
-* **Execution Rate:** **20Hz** (50ms cycles).
+* **Execution Rate:** **20Hz** (50ms cycles for motor/odom), **50Hz** (20ms target for IMU).
+* **Communication Interface:** UART Serial @ **921600 baud** (micro-ROS Jazzy).
 * **Communication Lifecycle:**
   * Auto-recovers and reboots (`esp_restart()`) to re-handshake and synchronize encoder counts if the Radxa micro-ROS agent restarts.
   * Embedded **watchdog** halts motors if no command is received on `/cmd_vel` or `/cmd_vel_nav` within **150ms**.
+* **Sensors:**
+  * **Encoders:** Quadrature optical/magnetic encoders on GPIO 7, 15 (Left) and 11, 16 (Right).
+  * **IMU:** MPU9250 on I2C bus (SDA/SCL) reporting acceleration, angular velocity, and orientation.
 * **Motor Control Specs:**
   * Uses **LEDC** at **2kHz** with **8-bit** duty cycle resolution (`0-255`).
   * Left motor pins: ENA `4`, IN1 `5`, IN2 `6`. Right motor pins: ENB `8`, IN3 `10`, IN4 `9`.
