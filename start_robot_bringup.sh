@@ -8,6 +8,11 @@ export HOME=/home/radxa
 export USER=radxa
 cd "$HOME/receptionist_robot_ws"
 
+# Auto-configure static IP 10.254.254.2 on physical Ethernet (handles cloned SD cards with different MACs)
+if [ -f "$HOME/receptionist_robot_ws/scripts/setup_ethernet_static.sh" ]; then
+    bash "$HOME/receptionist_robot_ws/scripts/setup_ethernet_static.sh" >/dev/null 2>&1 || true
+fi
+
 # Match interactive shell ROS networking (remote RViz on 10.254.254.1)
 source /opt/ros/jazzy/setup.bash
 source /home/radxa/receptionist_robot_ws/install/setup.bash
@@ -93,7 +98,7 @@ reset_esp32_hardware() {
         python3 -c "
 import serial, time
 try:
-    s = serial.Serial('$dev', 115200)
+    s = serial.Serial('$dev', 921600)
     s.dtr = False
     s.rts = True
     time.sleep(0.2)
@@ -133,6 +138,7 @@ reset_esp32_hardware "$ESP32_DEV"
 
 ros2 launch receptionist_robot_bringup bringup.launch.py \
     serial_port:="$ESP32_DEV" \
+    serial_baudrate:="921600" \
     lidar_port:="$LIDAR_DEV" \
     camera_device:="$CAM_DEV" \
     use_sim_time:=false &
