@@ -1,7 +1,0 @@
-[Desktop Entry]
-Name=Receptionist Kiosk
-Comment=Fullscreen video kiosk on boot
-Exec=/home/radxa/receptionist_robot_ws/kiosk-session.sh
-TryExec=/home/radxa/receptionist_robot_ws/kiosk-session.sh
-Type=Application
-DesktopNames=ReceptionistKiosk

@@ -18,21 +18,11 @@ ros2 run cartographer_ros cartographer_node     -configuration_directory ~/turtl
 # SLAM Map
 ros2 run cartographer_ros cartographer_occupancy_grid_node     --ros-args -p resolution:=0.05     -p use_sim_time:=False     -p publish_period_sec:=1.0
 
-# Run bringup
-ros2 launch turtlebot3_bringup robot.launch.py
-
-# Run navigation:
-## Turtlebot3 navigation: 
-ros2 launch turtlebot3_navigation2 navigation2.launch.py map:=/home/radxa/turtlebot3_ws/map/test_map.pbstream use_sim_time:=False
-
 ## Ros2-jazzy navigation:
 ros2 launch nav2_bringup navigation_launch.py use_sim_time:=False
 
 # Micro-ros
 ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0 -v6
-
-# IN DEV REMOTE PC: 
-ros2 launch nav2_bringup rviz_launch.py
 
 # Print tf tree
 ros2 run tf2_tools view_frames
@@ -40,15 +30,6 @@ ros2 run tf2_tools view_frames
 # Control 
 ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p stamped:=true
-
-# Service (System Services - cần sudo)
-# Cả hai đều là unit cấp system trong /etc/systemd/system/.
-# KHÔNG dùng `systemctl --user` nữa: bản user cũ đã bị xóa vì trùng với bản
-# system, hai bản cùng chạy sẽ tạo 2 tiến trình mpv tranh nhau /tmp/mpvsocket.
-# Sau khi sửa file .service trong repo thì phải cài lại:
-sudo install -m 644 play_video.service /etc/systemd/system/play_video.service
-sudo install -m 644 robot_bringup.service /etc/systemd/system/robot_bringup.service
-sudo systemctl daemon-reload
 
 ## Robot Bringup:
 sudo systemctl enable --now robot_bringup.service
