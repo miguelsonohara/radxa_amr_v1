@@ -16,9 +16,60 @@ export ROS_DOMAIN_ID=0
 unset ROS_LOCALHOST_ONLY
 export ROS_STATIC_PEERS="10.254.254.1;192.168.16.28;192.168.16.27"
 
-ESP32_DEV="/dev/serial/by-id/usb-1a86_USB_Single_Serial_5C36140582-if00"
-LIDAR_DEV="/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_fcefc1eb0664ef118210e1a9c169b110-if00-port0"
+LIDAR_DEV="/dev/ttyHS3"
 CAM_DEV="/dev/my_camera"
+
+find_esp32_dev() {
+    # 1. Check udev persistent symlink
+    if [ -e "/dev/esp32_serial" ]; then
+        echo "/dev/esp32_serial"
+        return 0
+    fi
+    # 2. Check any 1a86 USB serial by-id pattern (CH340/CH341/CH343/CH347)
+    for dev in /dev/serial/by-id/usb-1a86_*; do
+        if [ -e "$dev" ]; then
+            echo "$dev"
+            return 0
+        fi
+    done
+    # 3. Check any Espressif USB serial by-id pattern
+    for dev in /dev/serial/by-id/usb-Espressif_*; do
+        if [ -e "$dev" ]; then
+            echo "$dev"
+            return 0
+        fi
+    done
+    # 4. Standard serial fallbacks
+    if [ -e "/dev/ttyACM0" ]; then
+        echo "/dev/ttyACM0"
+        return 0
+    fi
+    if [ -e "/dev/ttyUSB0" ]; then
+        echo "/dev/ttyUSB0"
+        return 0
+    fi
+    return 1
+}
+
+wait_for_esp32_dev() {
+    local timeout_s="${1:-90}"
+    local elapsed=0
+    echo "[bringup] waiting for ESP32 (micro-ROS)..."
+    while [ "$elapsed" -lt "$timeout_s" ]; do
+        local dev
+        dev=$(find_esp32_dev)
+        if [ -n "$dev" ] && [ -e "$dev" ]; then
+            echo "[bringup] ESP32 (micro-ROS) ready: $dev"
+            ESP32_DEV="$dev"
+            return 0
+        fi
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+    echo "[bringup] WARNING: ESP32 not found after ${timeout_s}s — falling back to /dev/esp32_serial"
+    ESP32_DEV="/dev/esp32_serial"
+    return 1
+}
 
 wait_for_dev() {
     local path="$1"
@@ -77,16 +128,21 @@ if [ "$sync_elapsed" -ge 20 ]; then
     echo "[bringup] WARNING: NTP sync timed out after 20s. Proceeding with system time $(date)"
 fi
 
-wait_for_dev "$ESP32_DEV" "ESP32 (micro-ROS)" 90
+wait_for_esp32_dev 90
 wait_for_dev "$LIDAR_DEV" "LiDAR" 90
 wait_for_dev "$CAM_DEV" "USB camera" 30
 
 # Reset ESP32 hardware cleanly so it synchronizes clock with Linux host immediately
 reset_esp32_hardware "$ESP32_DEV"
 
+# Prevent Qualcomm UART GENI driver from power-saving autosuspend on LiDAR port
+echo "on" > /sys/class/tty/ttyHS3/device/power/control 2>/dev/null || true
+
 ros2 launch receptionist_robot_bringup bringup.launch.py \
     serial_port:="$ESP32_DEV" \
     lidar_port:="$LIDAR_DEV" \
+    lidar_baudrate:=115200 \
+    lidar_model:=X2A \
     camera_device:="$CAM_DEV" \
     use_sim_time:=false &
 LAUNCH_PID=$!

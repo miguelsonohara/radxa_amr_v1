@@ -17,11 +17,28 @@ import os
 import xacro
 from ament_index_python.packages import get_package_share_directory
 
+import glob
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+
+def get_default_esp32_port():
+    """Dynamically detect plugged-in ESP32-S3 serial port (handles different serial numbers)."""
+    if os.path.exists('/dev/esp32_serial'):
+        return '/dev/esp32_serial'
+    matches_1a86 = glob.glob('/dev/serial/by-id/usb-1a86_*')
+    if matches_1a86:
+        return matches_1a86[0]
+    matches_espressif = glob.glob('/dev/serial/by-id/usb-Espressif_*')
+    if matches_espressif:
+        return matches_espressif[0]
+    if os.path.exists('/dev/ttyACM0'):
+        return '/dev/ttyACM0'
+    if os.path.exists('/dev/ttyUSB0'):
+        return '/dev/ttyUSB0'
+    return '/dev/esp32_serial'
 
 def generate_launch_description():
     # --------------------------------------------------------------------------
@@ -58,10 +75,9 @@ def generate_launch_description():
     )
 
     # Micro-ROS Serial Port: The serial interface connecting the Radxa to the ESP32.
-    # Typically '/dev/ttyACM0' (USB OTG/direct) or '/dev/ttyUSB0' (UART converter).
     declare_serial_port = DeclareLaunchArgument(
         'serial_port',
-        default_value='/dev/serial/by-id/usb-1a86_USB_Single_Serial_5C36140582-if00',
+        default_value=get_default_esp32_port(),
         description='Serial port for the micro-ROS Agent connection to ESP32'
     )
 
@@ -74,18 +90,17 @@ def generate_launch_description():
     )
 
     # Lidar Serial Port: The interface where LiDAR is plugged in.
-    # Usually '/dev/ttyUSB0'.
     declare_lidar_port = DeclareLaunchArgument(
         'lidar_port',
-        default_value='/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_fcefc1eb0664ef118210e1a9c169b110-if00-port0',
+        default_value='/dev/ttyUSB0',
         description='Serial port for the LiDAR sensor'
     )
 
-    # Lidar Baudrate: Speed of communication with LiDAR (460800 for RPLidar C1).
+    # Lidar Baudrate: Speed of communication with LiDAR (115200 for HCLiDAR X2M).
     declare_lidar_baudrate = DeclareLaunchArgument(
         'lidar_baudrate',
-        default_value='460800',
-        description='Baudrate for RPLidar C1 (460800)'
+        default_value='115200',
+        description='Baudrate for LiDAR (115200 for HCLiDAR X2M)'
     )
 
     declare_scan_mode = DeclareLaunchArgument(
@@ -96,8 +111,8 @@ def generate_launch_description():
 
     declare_lidar_model = DeclareLaunchArgument(
         'lidar_model',
-        default_value='X2M',
-        description='Model of the HCLiDAR sensor (e.g. X1, X2M)'
+        default_value='X2A',
+        description='Model of the HCLiDAR sensor (e.g. X1, X2A, X2M)'
     )
 
     declare_camera_device = DeclareLaunchArgument(
@@ -121,33 +136,35 @@ def generate_launch_description():
         output='screen'
     )
 
-    # B. Lidar Node (sllidar_ros2 configured for RPLidar C1)
+    # B. Lidar Node (hclidar_driver_ros2 configured for HCLiDAR X2M)
     lidar_node = Node(
-        package='sllidar_ros2',
-        executable='sllidar_node',
-        name='sllidar_node',
+        package='hclidar_driver_ros2',
+        executable='hclidar_driver_ros2_node',
+        name='hclidar_driver_ros2_node',
         parameters=[{
-            'channel_type': 'serial',
-            'serial_port': LaunchConfiguration('lidar_port'),
-            'serial_baudrate': LaunchConfiguration('lidar_baudrate'),
+            'port': LaunchConfiguration('lidar_port'),
+            'baudrate': LaunchConfiguration('lidar_baudrate'),
+            'lidar_model': LaunchConfiguration('lidar_model'),
             'frame_id': 'laser',  # Must match the link name in URDF
-            'inverted': False,    # True to mirror scans if mounted upside down
-            'angle_compensate': True,
-            'scan_mode': LaunchConfiguration('scan_mode'),
-            'range_min': 0.25,   # <--- THÊM DÒNG NÀY: Lidar tự bỏ qua các điểm < 0.25m
-            'range_max': 12.0
+            'range_min': 0.25,   # Ignore points closer than 0.25m (robot chassis)
+            'range_max': 8.5
         }],
         output='screen'
     )
     # lidar_node = Node(
-    #     package='hclidar_driver_ros2',
-    #     executable='hclidar_driver_ros2_node',
-    #     name='hclidar_driver_ros2_node',
+    #     package='sllidar_ros2',
+    #     executable='sllidar_node',
+    #     name='sllidar_node',
     #     parameters=[{
-    #         'port': LaunchConfiguration('lidar_port'),
-    #         'baudrate': LaunchConfiguration('lidar_baudrate'),
-    #         'lidar_model': LaunchConfiguration('lidar_model'),
-    #         'frame_id': 'laser',  # Must match the link name in URDF
+    #         'channel_type': 'serial',
+    #         'serial_port': LaunchConfiguration('lidar_port'),
+    #         'serial_baudrate': LaunchConfiguration('lidar_baudrate'),
+    #         'frame_id': 'laser',
+    #         'inverted': False,
+    #         'angle_compensate': True,
+    #         'scan_mode': LaunchConfiguration('scan_mode'),
+    #         'range_min': 0.25,
+    #         'range_max': 12.0
     #     }],
     #     output='screen'
     # )

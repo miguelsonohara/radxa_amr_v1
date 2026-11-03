@@ -24,8 +24,8 @@ slam_toolbox:
     ceres_dogleg_type: TRADITIONAL_DOGLEG
 
     # Loss function to reduce the impact of outlier measurements (e.g. bad scan matches).
-    # Options: None, HuberLoss, CauchyLoss. Using None trusts scan matches unless noisy.
-    ceres_loss_function: None
+    # Options: None, HuberLoss, CauchyLoss. HuberLoss is essential for noisy lidars like Camsense X1/X2.
+    ceres_loss_function: HuberLoss
 
     # ==========================================================================
     # 2. ROS Frame and Topic Configurations
@@ -55,8 +55,8 @@ slam_toolbox:
 
     # SLAM operation mode.
     # Options: mapping (build a map from scratch) or localization (localize in a loaded map).
-    mode: localization
-    map_file_name: /home/radxa/receptionist_robot_ws/map/demo_map1
+    mode: mapping
+    # map_file_name: /home/radxa/receptionist_robot_ws/map/demo_map1
 
     # mode: mapping
 
@@ -76,29 +76,23 @@ slam_toolbox:
     use_scan_barycenter: true
 
     # Minimum distance (meters) the robot must move before processing a new scan.
-    # Tuning: Set to 0.25m in localization mode so SLAM maintains a lightweight graph without memory bloat.
     minimum_travel_distance: 0.02
 
     # Minimum heading change (radians) the robot must rotate before processing a new scan.
-    # Tuning: Set to 0.25 rad (~14 deg) to avoid inserting excessive rotational nodes.
-    minimum_travel_heading: 0.02
+    minimum_travel_heading: 0.04
 
     # If true, both distance AND heading threshold must be met to process a scan.
     # If false, either threshold being met triggers a scan update (default, safer).
     check_min_dist_and_heading_precisely: false
 
     # Number of scans to buffer in memory for loop closure and optimization.
-    # Tuning: Lower values save memory/CPU on low-resource hosts like Radxa.
-    scan_buffer_size: 10
+    scan_buffer_size: 15
 
     # Maximum distance (meters) between scans to consider them for matching.
-    # Scans further than this will not be linked in the pose graph.
     scan_buffer_maximum_scan_distance: 10.0
 
     # Minimum match response value for fine scan matching.
-    # Tuning: Higher values (e.g. 0.2) force strict matches (less map distortion but may fail
-    # in featureless halls); lower values allow weaker matches (e.g. 0.05).
-    link_match_minimum_response_fine: 0.1
+    link_match_minimum_response_fine: 0.08
 
     # Maximum distance (meters) to search for scan matching links.
     # Tuning: Set to maximum expected distance between sequential scans.
@@ -107,11 +101,10 @@ slam_toolbox:
     # Maximum distance (meters) to look for loop closures around the current pose.
     # Tuning: Increase to close larger loops; decrease to limit CPU spikes when returning
     # to known areas.
-    loop_search_maximum_distance: 3.0
+    loop_search_maximum_distance: 4.0
 
-    # If true, enables loop closure detection and optimization.
-    # Tuning: Set to false in pure localization mode to eliminate CPU spikes and long-run graph bloat.
-    do_loop_closing: false
+    # If true, enables loop closure detection and optimization (enabled for mapping mode).
+    do_loop_closing: true
 
     # Minimum number of sequential scans in a chain to trigger loop closing.
     # Tuning: Prevents false loop closures from transient obstacles.
@@ -136,8 +129,8 @@ slam_toolbox:
     correlation_search_space_dimension: 0.8
 
     # Resolution (meters per cell) of the search grid.
-    # Tuning: Smaller values (e.g., 0.01) increase accuracy; larger values speed up matching.
-    correlation_search_space_resolution: 0.01
+    # Tuning: 0.02m balances matching smoothness and CPU on Radxa for noisy lidars.
+    correlation_search_space_resolution: 0.02
 
     # Standard deviation (meters) to smear/smooth scan matching cost values.
     # Tuning: Prevents local minima traps by smoothing the search space.
@@ -159,12 +152,10 @@ slam_toolbox:
     # ==========================================================================
 
     # Penalty weight applied to translation updates that deviate from odometry.
-    # Tuning: Set to 0.1 so SLAM trusts LiDAR scan matches aggressively to eliminate movement slip.
-    distance_variance_penalty: 0.1
+    distance_variance_penalty: 0.15
 
     # Penalty weight applied to rotation updates that deviate from odometry.
-    # Tuning: Set to 0.1 so heading corrections from LiDAR are applied immediately.
-    angle_variance_penalty: 0.1
+    angle_variance_penalty: 0.15
 
     # Angular search range offset (radians) for fine matching.
     fine_search_angle_offset: 0.00349
@@ -193,19 +184,15 @@ slam_toolbox:
 
     # Rate at which to process incoming scans. 1 means process every scan,
     # 2 means process every second scan, etc.
-    # Tuning: Increase to 2 or 3 to reduce CPU utilization on the Radxa.
     throttle_scans: 1
 
     # Frequency (seconds) at which to publish the map-to-odom transform.
-    # Tuning: 0.02 (50Hz) provides smooth transforms for navigation. Set to 0 to disable publishing.
     transform_publish_period: 0.02
 
     # Interval (seconds) at which the occupancy grid map is updated and published to /map.
-    # Tuning: Increase (e.g., 5.0) to save CPU in localization mode.
-    map_update_interval: 5.0
+    map_update_interval: 2.0
 
     # Spatial resolution (meters per cell) of the generated map.
-    # Tuning: 0.05 (5cm) is standard for Nav2. Decreasing (e.g. 0.02) increases detail but uses more memory.
     resolution: 0.05
 
     # Re-apply scan timestamps before publishing transforms to keep time synchronized.
@@ -214,8 +201,7 @@ slam_toolbox:
     # Note: slam_toolbox doesn't have a min_laser_range parameter. It reads range_min directly from the /scan topic header.
 
     # Maximum range (meters) of lidar points to use for drawing the map.
-    # Tuning: Reduce (e.g. 12.0) to ignore noisy long-range readings from the RPLidar.
-    max_laser_range: 12.0
+    max_laser_range: 8.5
 
     # Minimum time (seconds) between processing successive scan updates (20Hz max rate).
     minimum_time_interval: 0.05
@@ -227,11 +213,10 @@ slam_toolbox:
     tf_buffer_duration: 15.0
 
     # Stack size (bytes) allocated for the serialization threads.
-    # Must be large to serialize high-resolution maps without segmentation faults.
     stack_size_to_use: 40000000
 
     # Enables interactive mode in RViz, allowing users to move map nodes manually.
     enable_interactive_mode: true
 
     # Minimum hit probability threshold to mark a cell as occupied.
-    occupancy_threshold: 0.1
+    occupancy_threshold: 0.10

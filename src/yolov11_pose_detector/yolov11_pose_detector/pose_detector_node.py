@@ -196,7 +196,7 @@ class YoloV11PoseDetectorNode(Node):
         self.status_sub = self.create_subscription(String, status_topic, self.general_status_callback, status_qos)
         
         self.latest_scan = None
-        self.scan_subscription = self.create_subscription(LaserScan, scan_topic, self.scan_callback, 10)
+        self.scan_subscription = self.create_subscription(LaserScan, scan_topic, self.scan_callback, qos_profile_sensor_data)
         self.info_subscription = self.create_subscription(CameraInfo, camera_info_topic, self.camera_info_callback, qos_profile_sensor_data)
         
         self.tf_buffer = tf2_ros.Buffer()
