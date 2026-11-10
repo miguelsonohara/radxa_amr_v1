@@ -1,0 +1,20 @@
+[Unit]
+Description=Robot Core Agent Daemon (Localhost Port 5001 REST Gateway)
+After=network.target time-sync.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=rctrobot
+Group=rctrobot
+WorkingDirectory=/home/rctrobot/radxa_amr_v1
+ExecStart=/usr/bin/python3 /home/rctrobot/radxa_amr_v1/scripts/robot_agent.py
+Restart=always
+RestartSec=3
+KillMode=mixed
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=robot-agent
+
+[Install]
+WantedBy=multi-user.target

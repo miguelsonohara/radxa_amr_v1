@@ -1,6 +1,6 @@
-# Hướng Dẫn Cài Đặt Môi Trường ROS 2 Lyrical Trên Radxa (Dragon Q6A)
+# Hướng Dẫn Cài Đặt Môi Trường ROS 2 Jazzy Trên BPI-CM4-IO (bananapicm4io)
 
-Tài liệu này tổng hợp toàn bộ các bước thiết lập, cài đặt dependencies và build workspace sau khi clone repository `radxa_amr_v1` về một bo mạch Radxa mới.
+Tài liệu này tổng hợp toàn bộ các bước thiết lập, cài đặt dependencies và build workspace sau khi clone repository `radxa_amr_v1` về bo mạch Banana Pi BPI-CM4-IO (Armbian 24.04 Noble / ROS 2 Jazzy Jalisco).
 
 ---
 
@@ -14,22 +14,22 @@ sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 export LANG=en_US.UTF-8
 ```
 
-### 1.2. Thêm ROS 2 APT Repository (Ubuntu 26.04 Resolute / ROS 2 Lyrical)
+### 1.2. Thêm ROS 2 APT Repository (Ubuntu 24.04 Noble / ROS 2 Jazzy)
 ```bash
 sudo apt install -y software-properties-common curl
 sudo add-apt-repository universe -y
 sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu resolute main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu noble main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
 ```
 
 ---
 
-## 2. Cài Đặt ROS 2 Lyrical & Công Cụ Build
+## 2. Cài Đặt ROS 2 Jazzy & Công Cụ Build
 
 ```bash
 sudo apt update
 sudo apt install -y \
-  ros-lyrical-desktop \
+  ros-jazzy-ros-base \
   ros-dev-tools \
   python3-colcon-common-extensions \
   python3-rosdep
@@ -43,21 +43,20 @@ Cài đặt tất cả các package hệ thống cần thiết cho điều hư�
 
 ```bash
 sudo apt install -y \
-  ros-lyrical-xacro \
-  ros-lyrical-nav2-bringup \
-  ros-lyrical-slam-toolbox \
-  ros-lyrical-robot-localization \
-  ros-lyrical-teleop-twist-keyboard \
-  ros-lyrical-tf2-tools \
-  ros-lyrical-micro-ros-msgs \
-  ros-lyrical-camera-info-manager \
-  ros-lyrical-rqt-image-view \
-  ros-lyrical-cv-bridge \
-  ros-lyrical-image-transport \
+  ros-jazzy-xacro \
+  ros-jazzy-nav2-bringup \
+  ros-jazzy-slam-toolbox \
+  ros-jazzy-robot-localization \
+  ros-jazzy-teleop-twist-keyboard \
+  ros-jazzy-tf2-tools \
+  ros-jazzy-camera-info-manager \
+  ros-jazzy-cv-bridge \
+  ros-jazzy-image-transport \
   libv4l-dev \
   v4l-utils \
   python3-opencv \
-  python3-numpy
+  python3-numpy \
+  python3-serial
 ```
 
 ---
@@ -68,59 +67,18 @@ Khi clone repo chính `radxa_amr_v1` về thư mục người dùng:
 ```bash
 cd ~
 git clone https://github.com/miguelsonohara/radxa_amr_v1.git
-cd ~/radxa_amr_v1/src
+cd ~/radxa_amr_v1
 ```
 
-### 4.1. Clone các Driver bổ sung (nếu chưa có trong `src/`):
-
-1. **Micro-ROS Agent (nhánh `lyrical`):**
-   ```bash
-   git clone -b lyrical https://github.com/micro-ROS/micro-ROS-Agent.git micro_ros_agent
-   ```
-
-2. **USB Camera Driver:**
-   ```bash
-   git clone https://github.com/ros-drivers/usb_cam.git usb_cam
-   ```
-
-3. **LiDAR Drivers (nếu chưa có):**
-   ```bash
-   git clone https://github.com/Slamtec/sllidar_ros2.git sllidar_ros2
-   git clone https://github.com/manhbt/hclidar_driver_ros2.git hclidar_driver_ros2
-   ```
-
 ---
 
-## 5. Các Bản Vá (Patch) Bắt Buộc Cho ROS 2 Lyrical
-
-Do ROS 2 Lyrical sử dụng GCC 15 và Modern CMake (loại bỏ macro cũ), các file sau cần được đảm bảo đã patch:
-
-### 5.1. Patch `sllidar_ros2` & `hclidar_driver_ros2` (CMakeLists.txt)
-> *Lưu ý: ROS 2 Lyrical đã xóa bỏ hàm `ament_target_dependencies`.*
-* Trong `src/sllidar_ros2/CMakeLists.txt` và `src/hclidar_driver_ros2/CMakeLists.txt`:
-  Thay thế toàn bộ các lời gọi `ament_target_dependencies(...)` bằng `target_link_libraries(...)` liên kết trực tiếp với `rclcpp::rclcpp`, `${sensor_msgs_TARGETS}`, `${std_srvs_TARGETS}`,... *(Trong repo này đã được chỉnh sửa sẵn)*.
-
-### 5.2. Patch `usb_cam` (CMakeLists.txt)
-* Trong file `src/usb_cam/CMakeLists.txt` (dòng 10):
-  Thay:
-  ```cmake
-  add_compile_options(-Wall -Wextra -Wpedantic -Werror)
-  ```
-  Thành:
-  ```cmake
-  add_compile_options(-Wall -Wextra -Wpedantic -Wno-error=deprecated-declarations)
-  ```
-  *(Để tránh GCC 15 dừng build do cảnh báo deprecation API của camera)*.
-
----
-
-## 6. Biên Dịch Workspace
+## 5. Biên Dịch Workspace
 
 Quay về thư mục gốc của workspace và thực hiện build:
 
 ```bash
 cd ~/radxa_amr_v1
-source /opt/ros/lyrical/setup.bash
+source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install
 ```
 
@@ -131,17 +89,17 @@ source install/setup.bash
 
 ---
 
-## 7. Cấu Hình Environment & Quyền Truy Cập Thiết Bị
+## 6. Cấu Hình Environment & Quyền Truy Cập Thiết Bị
 
-### 7.1. Tự động source vào `~/.bashrc`
+### 6.1. Tự động source vào `~/.bashrc`
 ```bash
-echo "source /opt/ros/lyrical/setup.bash" >> ~/.bashrc
+echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
 echo "source ~/radxa_amr_v1/install/setup.bash" >> ~/.bashrc
 source ~/.bashrc
 ```
 
-### 7.2. Phân quyền truy cập Serial Port và Camera
-Thêm user hiện tại vào group `dialout` và `video` để truy cập mạch ESP32, LiDAR và Camera mà không cần `sudo`:
+### 6.2. Phân quyền truy cập Serial Port và Camera
+Thêm user `rctrobot` vào group `dialout` và `video` để truy cập mạch ESP32, LiDAR và Camera mà không cần `sudo`:
 ```bash
 sudo usermod -a -G dialout,video $USER
 ```
@@ -149,17 +107,32 @@ sudo usermod -a -G dialout,video $USER
 
 ---
 
+## 7. Cài Đặt Dịch Vụ Tự Khởi Động (Systemd Services)
+
+Chạy script cài đặt dịch vụ tự động cho Single-Board:
+```bash
+~/radxa_amr_v1/scripts/install_robot_services.sh
+```
+Script sẽ tự động đăng ký:
+1. `robot_agent.service`: Daemon HTTP tại `http://127.0.0.1:5001` nhận lệnh điều khiển từ Web Gateway (`radxa_llm_web_v1`).
+2. `robot_bringup.service`: Stack khởi động headless cho toàn bộ phần cứng và Nav2.
+
+---
+
 ## 8. Kiểm Tra Hoạt Động (Sanity Check)
 
-### 8.1. Kiểm tra không cần cắm phần cứng (Giả lập để xem trên RViz & rqt từ PC)
+### 8.1. Kiểm tra REST Daemon:
 ```bash
-python3 ~/radxa_amr_v1/scripts/publish_test_data.py
+curl http://127.0.0.1:5001/api/robot/status
+curl http://127.0.0.1:5001/api/robot/maps
 ```
-* Trên máy PC (Jazzy/Lyrical): Mở `rqt_image_view` (chọn topic `/image_raw`) và `rviz2` (Fixed frame: `base_link`, add `LaserScan` topic `/scan`).
 
-### 8.2. Chạy toàn bộ Robot Bringup (khi đã cắm phần cứng)
+### 8.2. Chạy toàn bộ Robot Bringup thủ công:
 ```bash
-ros2 launch receptionist_robot_bringup bringup.launch.py \
-  serial_port:=/dev/ttyACM0 \
-  lidar_port:=/dev/ttyUSB0
+~/radxa_amr_v1/start_robot_bringup.sh
+```
+hoặc qua service:
+```bash
+sudo systemctl start robot_bringup.service
+journalctl -u robot_bringup.service -f
 ```

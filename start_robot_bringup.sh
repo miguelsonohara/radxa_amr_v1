@@ -4,21 +4,33 @@
 # Does not start RViz — visualize from a remote PC.
 # Do not use `set -u`: /opt/ros/jazzy/setup.bash references unset AMENT_* vars.
 
-export HOME=/home/radxa
-export USER=radxa
-cd "$HOME/receptionist_robot_ws"
+export HOME=/home/rctrobot
+export USER=rctrobot
+cd "$HOME/radxa_amr_v1"
 
-# Match interactive shell ROS networking (remote RViz on 10.254.254.1)
+# Match interactive shell ROS networking (Single-board local loopback + SHM)
 source /opt/ros/jazzy/setup.bash
-source /home/radxa/receptionist_robot_ws/install/setup.bash
+source "$HOME/radxa_amr_v1/install/setup.bash"
 export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
 export ROS_DOMAIN_ID=0
 unset ROS_LOCALHOST_ONLY
-export ROS_STATIC_PEERS="10.254.254.1"
+unset ROS_STATIC_PEERS
 
-ESP32_DEV="/dev/serial/by-id/usb-1a86_USB_Single_Serial_5C36140582-if00"
-LIDAR_DEV="/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_fcefc1eb0664ef118210e1a9c169b110-if00-port0"
-CAM_DEV="/dev/my_camera"
+# Device path resolution (prefer persistent by-id, fallback to standard device nodes)
+ESP32_DEV="${ESP32_DEV:-/dev/serial/by-id/usb-1a86_USB_Single_Serial_5C36140582-if00}"
+if [ ! -e "$ESP32_DEV" ] && [ -e "/dev/ttyACM0" ]; then
+    ESP32_DEV="/dev/ttyACM0"
+fi
+
+LIDAR_DEV="${LIDAR_DEV:-/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_fcefc1eb0664ef118210e1a9c169b110-if00-port0}"
+if [ ! -e "$LIDAR_DEV" ] && [ -e "/dev/ttyUSB0" ]; then
+    LIDAR_DEV="/dev/ttyUSB0"
+fi
+
+CAM_DEV="${CAM_DEV:-/dev/my_camera}"
+if [ ! -e "$CAM_DEV" ] && [ -e "/dev/video0" ]; then
+    CAM_DEV="/dev/video0"
+fi
 
 # ------------------------------------------------------------------------------
 # 1. Wait for NTP Time Synchronization

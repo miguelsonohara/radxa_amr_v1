@@ -72,7 +72,7 @@ class YoloV11PoseDetectorNode(Node):
         self.declare_parameter('nav_action_server', '/navigate_to_pose')
         self.declare_parameter('status_topic', '/general_status')
         
-        self.declare_parameter('workspace_dir', '/home/radxa/receptionist_robot_ws')
+        self.declare_parameter('workspace_dir', '/home/rctrobot/radxa_amr_v1')
         self.declare_parameter('model_name', 'yolo11n-pose.onnx')
         self.declare_parameter('conf_threshold', 0.4)
         self.declare_parameter('nms_threshold', 0.45)

@@ -138,7 +138,7 @@ To navigate autonomously using the saved map, you can load it in the navigation 
    ```bash
    ros2 launch nav2_bringup bringup_launch.py \
      use_sim_time:=false \
-     map:=/home/radxa/receptionist_robot_ws/map/test_map.yaml \
+     map:=/home/rctrobot/radxa_amr_v1/map/test_map.yaml \
      params_file:=$(ros2 pkg prefix receptionist_robot_bringup)/share/receptionist_robot_bringup/config/nav2_params.yaml
    ```
 4. In RViz on your Remote PC, set the robot's initial position using the **"2D Pose Estimate"** tool to align the laser scan with the loaded map.
@@ -146,11 +146,11 @@ To navigate autonomously using the saved map, you can load it in the navigation 
 
 ### Method 2: Active SLAM Localization (SLAM Toolbox)
 Alternatively, you can run SLAM Toolbox in localization mode to continuously localize against a saved pose graph:
-1. Open the [slam_toolbox_params.yaml](file:///home/radxa/receptionist_robot_ws/src/receptionist_robot_bringup/config/slam_toolbox_params.yaml) file.
+1. Open the [slam_toolbox_params.yaml](file:///home/rctrobot/radxa_amr_v1/src/receptionist_robot_bringup/config/slam_toolbox_params.yaml) file.
 2. Change the following parameters:
    ```yaml
    mode: localization
-   map_file_name: /home/radxa/my_serialized_map
+   map_file_name: /home/rctrobot/radxa_amr_v1/map/demo_map1
    ```
 3. Restart the bringup launch file:
    ```bash

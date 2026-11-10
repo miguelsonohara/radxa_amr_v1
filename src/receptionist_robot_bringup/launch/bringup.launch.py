@@ -200,7 +200,8 @@ def generate_launch_description():
     )
 
     # I. Nav2 Keepout Filter Nodes (Restricted Stair/Hole Zones)
-    mask_yaml_file = '/home/radxa/receptionist_robot_ws/map/keepout_mask.yaml'
+    ws_dir = os.path.expanduser('~/radxa_amr_v1')
+    mask_yaml_file = os.path.join(ws_dir, 'map', 'keepout_mask.yaml')
     
     filter_mask_server_node = Node(
         package='nav2_map_server',
