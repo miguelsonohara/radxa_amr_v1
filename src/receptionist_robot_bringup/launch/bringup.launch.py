@@ -13,7 +13,9 @@ This launch file starts:
 5. Nav2 Stack: Standard path planning and local control, utilizing custom costmaps.
 """
 
+import glob
 import os
+import subprocess
 import xacro
 from ament_index_python.packages import get_package_share_directory
 
@@ -23,6 +25,54 @@ from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+
+def find_esp32_device(exclude=None):
+    """Dynamically detects ESP32-S3 serial port across board swaps."""
+    if os.path.exists('/dev/robot_esp32') and '/dev/robot_esp32' != exclude:
+        return '/dev/robot_esp32'
+    for pat in ['/dev/serial/by-id/*1a86*', '/dev/serial/by-id/*wch*', '/dev/serial/by-id/*Espressif*', '/dev/serial/by-id/*Single_Serial*']:
+        for dev in sorted(glob.glob(pat)):
+            if dev != exclude and os.path.exists(dev):
+                return dev
+    for dev in sorted(glob.glob('/dev/ttyACM*')):
+        if dev != exclude and os.path.exists(dev):
+            return dev
+    for dev in sorted(glob.glob('/dev/ttyUSB*')):
+        if dev != exclude and os.path.exists(dev):
+            try:
+                vid = subprocess.check_output(['udevadm', 'info', '-q', 'property', '-n', dev], text=True, stderr=subprocess.DEVNULL)
+                if 'ID_VENDOR_ID=1a86' in vid or 'ID_VENDOR_ID=303a' in vid:
+                    return dev
+            except Exception:
+                pass
+    for dev in sorted(glob.glob('/dev/ttyACM*') + glob.glob('/dev/ttyUSB*')):
+        if dev != exclude and os.path.exists(dev):
+            return dev
+    return '/dev/ttyACM0'
+
+
+def find_lidar_device(exclude=None):
+    """Dynamically detects LiDAR serial port across sensor swaps."""
+    for symlink in ['/dev/robot_lidar', '/dev/rplidar']:
+        if os.path.exists(symlink) and symlink != exclude:
+            return symlink
+    for pat in ['/dev/serial/by-id/*CP210*', '/dev/serial/by-id/*Silicon_Labs*', '/dev/serial/by-id/*RPLIDAR*', '/dev/serial/by-id/*rplidar*']:
+        for dev in sorted(glob.glob(pat)):
+            if dev != exclude and os.path.exists(dev):
+                return dev
+    for dev in sorted(glob.glob('/dev/ttyUSB*')):
+        if dev != exclude and os.path.exists(dev):
+            try:
+                vid = subprocess.check_output(['udevadm', 'info', '-q', 'property', '-n', dev], text=True, stderr=subprocess.DEVNULL)
+                if 'ID_VENDOR_ID=10c4' in vid:
+                    return dev
+            except Exception:
+                pass
+    for dev in sorted(glob.glob('/dev/ttyUSB*')):
+        if dev != exclude and os.path.exists(dev):
+            return dev
+    return '/dev/ttyUSB0'
+
 
 def generate_launch_description():
     # --------------------------------------------------------------------------
@@ -49,6 +99,9 @@ def generate_launch_description():
     # --------------------------------------------------------------------------
     # 2. Launch Arguments (Declared for easy runtime customization)
     # --------------------------------------------------------------------------
+    default_esp32_port = find_esp32_device()
+    default_lidar_port = find_lidar_device(exclude=default_esp32_port)
+    default_cam_port = '/dev/my_camera' if os.path.exists('/dev/my_camera') else ('/dev/video0' if os.path.exists('/dev/video0') else '/dev/video1')
     
     # Use Simulation Time: Set to 'true' if running inside Gazebo/Webots, 
     # but 'false' when running on the actual Radxa and ESP32 hardware.
@@ -62,8 +115,8 @@ def generate_launch_description():
     # Typically '/dev/ttyACM0' (USB OTG/direct) or '/dev/ttyUSB0' (UART converter).
     declare_serial_port = DeclareLaunchArgument(
         'serial_port',
-        default_value='/dev/serial/by-id/usb-1a86_USB_Single_Serial_5C36140582-if00',
-        description='Serial port for the micro-ROS Agent connection to ESP32'
+        default_value=default_esp32_port,
+        description='Serial port for the micro-ROS Agent connection to ESP32 (auto-detected)'
     )
 
     # Micro-ROS Baudrate: Baud rate of the serial connection to the ESP32.
@@ -78,8 +131,8 @@ def generate_launch_description():
     # Usually '/dev/ttyUSB0'.
     declare_lidar_port = DeclareLaunchArgument(
         'lidar_port',
-        default_value='/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_fcefc1eb0664ef118210e1a9c169b110-if00-port0',
-        description='Serial port for the LiDAR sensor'
+        default_value=default_lidar_port,
+        description='Serial port for the LiDAR sensor (auto-detected)'
     )
 
     # Lidar Baudrate: Speed of communication with LiDAR (460800 for RPLidar C1).
@@ -103,8 +156,8 @@ def generate_launch_description():
 
     declare_camera_device = DeclareLaunchArgument(
         'camera_device',
-        default_value='/dev/my_camera',
-        description='Video device path for usb_cam'
+        default_value=default_cam_port,
+        description='Video device path for usb_cam (auto-detected)'
     )
 
     declare_enable_keepout = DeclareLaunchArgument(

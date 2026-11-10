@@ -11,7 +11,9 @@ This launch file starts:
 3. Robot State Publisher: Parses Xacro URDF and publishes static transforms.
 """
 
+import glob
 import os
+import subprocess
 import xacro
 from ament_index_python.packages import get_package_share_directory
 
@@ -20,6 +22,54 @@ from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
+def find_esp32_device(exclude=None):
+    """Dynamically detects ESP32-S3 serial port across board swaps."""
+    if os.path.exists('/dev/robot_esp32') and '/dev/robot_esp32' != exclude:
+        return '/dev/robot_esp32'
+    for pat in ['/dev/serial/by-id/*1a86*', '/dev/serial/by-id/*wch*', '/dev/serial/by-id/*Espressif*', '/dev/serial/by-id/*Single_Serial*']:
+        for dev in sorted(glob.glob(pat)):
+            if dev != exclude and os.path.exists(dev):
+                return dev
+    for dev in sorted(glob.glob('/dev/ttyACM*')):
+        if dev != exclude and os.path.exists(dev):
+            return dev
+    for dev in sorted(glob.glob('/dev/ttyUSB*')):
+        if dev != exclude and os.path.exists(dev):
+            try:
+                vid = subprocess.check_output(['udevadm', 'info', '-q', 'property', '-n', dev], text=True, stderr=subprocess.DEVNULL)
+                if 'ID_VENDOR_ID=1a86' in vid or 'ID_VENDOR_ID=303a' in vid:
+                    return dev
+            except Exception:
+                pass
+    for dev in sorted(glob.glob('/dev/ttyACM*') + glob.glob('/dev/ttyUSB*')):
+        if dev != exclude and os.path.exists(dev):
+            return dev
+    return '/dev/ttyACM0'
+
+
+def find_lidar_device(exclude=None):
+    """Dynamically detects LiDAR serial port across sensor swaps."""
+    for symlink in ['/dev/robot_lidar', '/dev/rplidar']:
+        if os.path.exists(symlink) and symlink != exclude:
+            return symlink
+    for pat in ['/dev/serial/by-id/*CP210*', '/dev/serial/by-id/*Silicon_Labs*', '/dev/serial/by-id/*RPLIDAR*', '/dev/serial/by-id/*rplidar*']:
+        for dev in sorted(glob.glob(pat)):
+            if dev != exclude and os.path.exists(dev):
+                return dev
+    for dev in sorted(glob.glob('/dev/ttyUSB*')):
+        if dev != exclude and os.path.exists(dev):
+            try:
+                vid = subprocess.check_output(['udevadm', 'info', '-q', 'property', '-n', dev], text=True, stderr=subprocess.DEVNULL)
+                if 'ID_VENDOR_ID=10c4' in vid:
+                    return dev
+            except Exception:
+                pass
+    for dev in sorted(glob.glob('/dev/ttyUSB*')):
+        if dev != exclude and os.path.exists(dev):
+            return dev
+    return '/dev/ttyUSB0'
+
+
 def generate_launch_description():
     # 1. Package Paths & Configuration File Locators
     description_dir = get_package_share_directory('receptionist_robot_description')
@@ -27,6 +77,9 @@ def generate_launch_description():
     # Locate and process URDF Xacro file using the xacro library
     xacro_file = os.path.join(description_dir, 'urdf', 'receptionist_robot.urdf.xacro')
     robot_description_xml = xacro.process_file(xacro_file).toxml()
+
+    default_esp32_port = find_esp32_device()
+    default_lidar_port = find_lidar_device(exclude=default_esp32_port)
 
     # 2. Launch Arguments (Declared for easy runtime customization)
     declare_use_sim_time = DeclareLaunchArgument(
@@ -37,8 +90,8 @@ def generate_launch_description():
 
     declare_serial_port = DeclareLaunchArgument(
         'serial_port',
-        default_value='/dev/serial/by-id/usb-1a86_USB_Single_Serial_5C36139941-if00',
-        description='Serial port for the micro-ROS Agent connection to ESP32'
+        default_value=default_esp32_port,
+        description='Serial port for the micro-ROS Agent connection to ESP32 (auto-detected)'
     )
 
     declare_serial_baudrate = DeclareLaunchArgument(
@@ -49,8 +102,8 @@ def generate_launch_description():
 
     declare_lidar_port = DeclareLaunchArgument(
         'lidar_port',
-        default_value='/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_fcefc1eb0664ef118210e1a9c169b110-if00-port0',
-        description='Serial port for the LiDAR sensor'
+        default_value=default_lidar_port,
+        description='Serial port for the LiDAR sensor (auto-detected)'
     )
 
     declare_lidar_baudrate = DeclareLaunchArgument(
