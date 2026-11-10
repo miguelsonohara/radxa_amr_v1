@@ -14,15 +14,18 @@ This skill documents actionable operational procedures for developing, building,
 
 ---
 
-## ⚡ QUY TẮC THỰC THI LỆNH CHO AI AGENT (SINGLE-APPROVAL EXECUTION RULE)
+## ⚡ QUY TẮC THỰC THI LỆNH CHO AI AGENT (RUNNER PROTOCOL: SINGLE-APPROVAL)
 
 > [!IMPORTANT]
 > **Quy tắc bắt buộc khi Agent cần chạy lệnh bash, build hoặc kiểm thử Python:**
-> 1. **KHÔNG** gọi nhiều tool `run_command` rời rạc liên tiếp bắt người dùng phải bấm xác nhận (Accept) nhiều lần.
-> 2. **LUÔN LUÔN** gom toàn bộ chuỗi lệnh vào một file script (ví dụ: file bash `.sh` hoặc script test Python `.py` trong `scripts/` hoặc scratch):
->    - Dùng `write_file` hoặc `edit_file` để chuẩn bị nội dung hoàn chỉnh của script.
->    - Sau đó chỉ gọi `run_command` chạy script đó **đúng 1 lần duy nhất**.
-> 3. Người dùng chỉ cần xem qua nội dung script và accept một lần là toàn bộ quá trình test / build / chạy lệnh được hoàn thành trọn vẹn.
+> 1. **Dùng file runner có tên cố định (`scripts/runner.sh` hoặc `scripts/runner.py`):**
+>    - Khi cần chạy chuỗi lệnh bash, build hay chạy code kiểm tra: **CHỈ SỬ DỤNG MỘT FILE CỐ ĐỊNH** là `scripts/runner.sh` (hoặc `scripts/runner.py` cho script Python).
+>    - **TUYỆT ĐỐI KHÔNG** tạo file mới rồi xóa đi mỗi lần chạy (`không xóa tạo mỗi lần`). Hãy tái sử dụng và cập nhật / ghi đè nội dung file runner cố định này qua `write_file` (Overwrite=true) hoặc `edit_file`.
+> 2. **Chấp thuận 1 lần duy nhất (Single Approval):**
+>    - **KHÔNG** gọi nhiều lệnh `run_command` rời rạc liên tiếp bắt người dùng phải bấm xác nhận (Accept) nhiều lần.
+>    - Toàn bộ chuỗi lệnh cần chạy hoặc code kiểm thử phải được viết sẵn vào file runner cố định.
+>    - Sau đó chỉ gọi `run_command` chạy file runner đó **đúng 1 lần duy nhất** (ví dụ: `bash /home/rctrobot/radxa_amr_v1/scripts/runner.sh`).
+> 3. **Lợi ích:** Người dùng chỉ cần xem qua diff của file runner quen thuộc và bấm **Accept 1 lần** là toàn bộ chuỗi tác vụ / kiểm thử được thực thi xong, tránh làm rác thư mục dự án và tiết kiệm tối đa thời gian.
 
 ---
 
