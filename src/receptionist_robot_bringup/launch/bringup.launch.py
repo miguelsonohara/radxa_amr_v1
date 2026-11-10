@@ -19,6 +19,7 @@ from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -104,6 +105,12 @@ def generate_launch_description():
         'camera_device',
         default_value='/dev/my_camera',
         description='Video device path for usb_cam'
+    )
+
+    declare_enable_keepout = DeclareLaunchArgument(
+        'enable_keepout',
+        default_value='false',
+        description='Enable Nav2 keepout costmap filters (default: false)'
     )
 
     # --------------------------------------------------------------------------
@@ -199,7 +206,7 @@ def generate_launch_description():
         output='screen'
     )
 
-    # I. Nav2 Keepout Filter Nodes (Restricted Stair/Hole Zones)
+    # I. Nav2 Keepout Filter Nodes (Restricted Stair/Hole Zones - Set false by default)
     ws_dir = os.path.expanduser('~/radxa_amr_v1')
     mask_yaml_file = os.path.join(ws_dir, 'map', 'keepout_mask.yaml')
     
@@ -208,6 +215,7 @@ def generate_launch_description():
         executable='map_server',
         name='filter_mask_server',
         output='screen',
+        condition=IfCondition(LaunchConfiguration('enable_keepout')),
         parameters=[{
             'use_sim_time': LaunchConfiguration('use_sim_time'),
             'yaml_filename': mask_yaml_file,
@@ -221,6 +229,7 @@ def generate_launch_description():
         executable='costmap_filter_info_server',
         name='costmap_filter_info_server',
         output='screen',
+        condition=IfCondition(LaunchConfiguration('enable_keepout')),
         parameters=[{
             'use_sim_time': LaunchConfiguration('use_sim_time'),
             'type': 0,
@@ -235,6 +244,7 @@ def generate_launch_description():
         executable='lifecycle_manager',
         name='lifecycle_manager_costmap_filters',
         output='screen',
+        condition=IfCondition(LaunchConfiguration('enable_keepout')),
         parameters=[{
             'use_sim_time': LaunchConfiguration('use_sim_time'),
             'autostart': True,
@@ -293,6 +303,7 @@ def generate_launch_description():
     ld.add_action(declare_scan_mode)
     ld.add_action(declare_lidar_model)
     ld.add_action(declare_camera_device)
+    ld.add_action(declare_enable_keepout)
     
     # Add Core Driver & Hardware Nodes Immediately
     ld.add_action(micro_ros_agent_node)

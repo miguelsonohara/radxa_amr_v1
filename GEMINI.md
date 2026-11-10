@@ -55,7 +55,7 @@ graph TD
     LEDC -->|Voltage| Motors[DC Motors]
     EncT[Encoders] -->|Interrupts| Enc
     Enc -->|Feedback| PID
-    PID -->|/odom & /tf| StateM
+    PID -->|/odom & /imu| StateM
     StateM -->|micro-ROS Transport| MicroAgent
 ```
 
@@ -68,8 +68,10 @@ graph TD
 | `/cmd_vel` | `geometry_msgs/msg/TwistStamped` | Collision Monitor / Teleop / Web | ESP32-S3 | Final safe movement commands. |
 | `/cmd_vel_nav` | `geometry_msgs/msg/TwistStamped` | Nav2 Controller | ESP32-S3 | Autonomous navigation commands. |
 | `/cmd_vel_smoothed`| `geometry_msgs/msg/Twist` | Velocity Smoother | Collision Monitor | Smoothed output from Nav2. |
-| `/odom` | `nav_msgs/msg/Odometry` | ESP32-S3 | Nav2 / SLAM | Dual-wheel encoder-derived odometry. |
-| `/tf` | `tf2_msgs/msg/TFMessage` | ESP32-S3 / Robot State Pub | TF Tree | Coordinate transformations ($odom \rightarrow base\_link$, etc.). |
+| `/odom` | `nav_msgs/msg/Odometry` | ESP32-S3 | EKF Node / Nav2 | Raw dual-wheel encoder odometry. |
+| `/imu` | `sensor_msgs/msg/Imu` | ESP32-S3 | EKF Node | Raw IMU orientation & angular velocity. |
+| `/odometry/filtered`| `nav_msgs/msg/Odometry` | EKF Node | Nav2 / SLAM | Sensor-fused odometry output. |
+| `/tf` | `tf2_msgs/msg/TFMessage` | EKF Node / Robot State Pub | TF Tree | Coordinate transformations ($odom \rightarrow base\_link$, etc.). ESP32 does NOT publish TF. |
 | `/scan` | `sensor_msgs/msg/LaserScan` | HCLiDAR Driver / RPLidar | SLAM / Nav2 | Laser range scans for obstacle avoidance. |
 | `/goal_pose` | `geometry_msgs/msg/PoseStamped` | robot_agent.py / Web UI | Nav2 | Navigation goal target position. |
 | `/image_raw` | `sensor_msgs/msg/Image` | usb_cam | Vision / Pose | Raw video stream from camera. |
@@ -97,7 +99,7 @@ LiDAR sensor drivers configured to publish on `/scan` relative to the `laser` co
 
 ### 📂 `yolov11_pose_detector` & `usb_cam`
 * **`usb_cam`:** V4L2 video capture node publishing to `/image_raw`.
-* **`yolov11_pose_detector`:** Deep learning person & pose detection utilizing ONNX Runtime (`yolo11n-pose.onnx`).
+* **`yolov11_pose_detector`:** Deep learning person & pose detection utilizing ONNX Runtime (`yolo11n-pose.onnx`). Throttled to ~3 FPS with 2 ONNX threads on CPU to conserve CPU cores for Nav2 and Web Kiosk.
 
 ### 📂 `scripts/robot_agent.py` (Local REST Control Daemon - Port 5001)
 Lightweight HTTP daemon listening on `127.0.0.1:5001`:
@@ -127,6 +129,7 @@ Installation command:
 ## 5. ESP32-S3 MCU Firmware Summary
 
 * **Execution Rate:** **20Hz** (50ms cycles).
+* **Topics & Frames:** Publishes `/odom` (raw wheel odometry) and `/imu`. Does NOT publish `/tf` ($odom \rightarrow base\_link$ transform is exclusively handled by `ekf_node` on host to prevent TF jitter).
 * **Communication Lifecycle:**
   * Auto-recovers and reboots (`esp_restart()`) to re-handshake and synchronize encoder counts if the host micro-ROS agent restarts.
   * Embedded **watchdog** halts motors if no command is received on `/cmd_vel` or `/cmd_vel_nav` within **150ms**.

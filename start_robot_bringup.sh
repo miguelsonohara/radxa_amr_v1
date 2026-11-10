@@ -16,30 +16,18 @@ export ROS_DOMAIN_ID=0
 unset ROS_LOCALHOST_ONLY
 unset ROS_STATIC_PEERS
 
-# Device path resolution (prefer persistent by-id, fallback to standard device nodes)
+# Device path templates (prefer persistent by-id, fallback dynamically)
 ESP32_DEV="${ESP32_DEV:-/dev/serial/by-id/usb-1a86_USB_Single_Serial_5C36140582-if00}"
-if [ ! -e "$ESP32_DEV" ] && [ -e "/dev/ttyACM0" ]; then
-    ESP32_DEV="/dev/ttyACM0"
-fi
-
 LIDAR_DEV="${LIDAR_DEV:-/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_fcefc1eb0664ef118210e1a9c169b110-if00-port0}"
-if [ ! -e "$LIDAR_DEV" ] && [ -e "/dev/ttyUSB0" ]; then
-    LIDAR_DEV="/dev/ttyUSB0"
-fi
-
 CAM_DEV="${CAM_DEV:-/dev/my_camera}"
-if [ ! -e "$CAM_DEV" ] && [ -e "/dev/video0" ]; then
-    CAM_DEV="/dev/video0"
-fi
 
 # ------------------------------------------------------------------------------
-# 1. Wait for NTP Time Synchronization
-# Prevents clock skew / timestamp lag between ESP32 micro-ROS and host Nav2 stack
+# 1. Wait for NTP Time Synchronization (Short timeout for offline kiosk resilience)
 # ------------------------------------------------------------------------------
 wait_for_time_sync() {
-    local timeout_s="${1:-45}"
+    local timeout_s="${1:-5}"
     local elapsed=0
-    echo "[bringup] Waiting for NTP system clock synchronization..."
+    echo "[bringup] Checking system clock synchronization via NTP (timeout: ${timeout_s}s)..."
     while [ "$elapsed" -lt "$timeout_s" ]; do
         if [ "$(timedatectl show -p NTPSynchronized --value 2>/dev/null)" = "yes" ]; then
             echo "[bringup] System clock synchronized via NTP (current time: $(date))"
@@ -48,36 +36,55 @@ wait_for_time_sync() {
         sleep 1
         elapsed=$((elapsed + 1))
     done
-    echo "[bringup] WARNING: NTP sync timeout after ${timeout_s}s — proceeding with current clock: $(date)"
-    return 1
+    echo "[bringup] NTP sync skipped or offline — proceeding with current clock: $(date)"
+    return 0
 }
 
 # ------------------------------------------------------------------------------
-# 2. Wait for Hardware Serial & Video Devices
+# 2. Wait for Hardware Serial & Video Devices (Dynamic fallback resolution)
 # ------------------------------------------------------------------------------
 wait_for_dev() {
-    local path="$1"
-    local label="$2"
-    local timeout_s="${3:-90}"
+    local primary="$1"
+    local fallback_glob="$2"
+    local label="$3"
+    local timeout_s="${4:-60}"
     local elapsed=0
-    echo "[bringup] waiting for ${label}: ${path}"
-    while [ ! -e "$path" ] && [ "$elapsed" -lt "$timeout_s" ]; do
+    echo "[bringup] Waiting for ${label} (target: ${primary}, fallback: ${fallback_glob})..."
+    while [ "$elapsed" -lt "$timeout_s" ]; do
+        if [ -e "$primary" ]; then
+            RESOLVED_DEV="$primary"
+            echo "[bringup] ${label} found: ${RESOLVED_DEV}"
+            return 0
+        fi
+        if [ -n "$fallback_glob" ]; then
+            for f in $fallback_glob; do
+                if [ -e "$f" ]; then
+                    RESOLVED_DEV="$f"
+                    echo "[bringup] ${label} resolved via fallback: ${RESOLVED_DEV}"
+                    return 0
+                fi
+            done
+        fi
         sleep 1
         elapsed=$((elapsed + 1))
     done
-    if [ -e "$path" ]; then
-        echo "[bringup] ${label} ready"
-        return 0
-    fi
-    echo "[bringup] WARNING: ${label} not found after ${timeout_s}s — launching anyway"
+
+    RESOLVED_DEV="$primary"
+    echo "[bringup] WARNING: ${label} not found after ${timeout_s}s — launching with: ${RESOLVED_DEV}"
     return 1
 }
 
 # Run synchronization and device discovery
-wait_for_time_sync 45
-wait_for_dev "$ESP32_DEV" "ESP32 (micro-ROS)" 90
-wait_for_dev "$LIDAR_DEV" "LiDAR" 90
-wait_for_dev "$CAM_DEV" "USB camera" 30
+wait_for_time_sync 5
+
+wait_for_dev "$ESP32_DEV" "/dev/ttyACM0 /dev/ttyACM1" "ESP32 (micro-ROS)" 30
+ESP32_DEV="$RESOLVED_DEV"
+
+wait_for_dev "$LIDAR_DEV" "/dev/ttyUSB0 /dev/ttyUSB1" "LiDAR" 30
+LIDAR_DEV="$RESOLVED_DEV"
+
+wait_for_dev "$CAM_DEV" "/dev/video0 /dev/video1" "USB camera" 10
+CAM_DEV="$RESOLVED_DEV"
 
 # Reset ESP32 via DTR/RTS toggle to guarantee clean micro-ROS handshake with accurate host time
 if [ -e "$ESP32_DEV" ]; then

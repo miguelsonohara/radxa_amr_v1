@@ -78,7 +78,8 @@ class YoloV11PoseDetectorNode(Node):
         self.declare_parameter('nms_threshold', 0.45)
         self.declare_parameter('kp_conf_threshold', 0.4)
         self.declare_parameter('onnx_input_size', 320)
-        self.declare_parameter('onnx_threads', 4)
+        self.declare_parameter('onnx_threads', 2)
+        self.declare_parameter('target_fps', 3.0)
         
         self.declare_parameter('focal_length_x', 550.0)
         self.declare_parameter('focal_length_y', 550.0)
@@ -126,6 +127,8 @@ class YoloV11PoseDetectorNode(Node):
         self.kp_conf_threshold = self.get_parameter('kp_conf_threshold').value
         self.onnx_input_size = self.get_parameter('onnx_input_size').value
         self.onnx_threads = self.get_parameter('onnx_threads').value
+        self.target_fps = self.get_parameter('target_fps').value
+        self.last_inference_time = 0.0
         
         self.f_x = self.get_parameter('focal_length_x').value
         self.f_y = self.get_parameter('focal_length_y').value
@@ -199,9 +202,9 @@ class YoloV11PoseDetectorNode(Node):
         self.target_type = "NONE"  # "PERSON" or "HOME"
         self._publish_general_status("IDLE")
 
-        # Temporal Filtering & Goal Smoothing Buffers
-        self.declare_parameter('gesture_buffer_size', 10)
-        self.declare_parameter('gesture_trigger_threshold', 7)
+        # Temporal Filtering & Goal Smoothing Buffers (Tuned for ~3 FPS)
+        self.declare_parameter('gesture_buffer_size', 6)
+        self.declare_parameter('gesture_trigger_threshold', 4)
         self.declare_parameter('smooth_buffer_size', 5)
 
         gesture_buf_size = self.get_parameter('gesture_buffer_size').value
@@ -440,7 +443,14 @@ class YoloV11PoseDetectorNode(Node):
     # Main Image Pipeline Callback
     # ==========================================================================
     def image_callback(self, msg):
-        start_time = time.time()
+        cur_wall_time = time.time()
+        min_interval = 1.0 / max(0.1, self.target_fps)
+        if (cur_wall_time - self.last_inference_time) < min_interval:
+            # Skip frame to maintain target FPS (~3 FPS) and conserve CPU for Nav2
+            return
+        self.last_inference_time = cur_wall_time
+
+        start_time = cur_wall_time
         
         try:
             if msg.encoding in ['mjpeg', '8UC1', 'jpeg', 'compressed'] or (len(msg.data) > 0 and msg.encoding not in ['bgr8', 'rgb8']):
