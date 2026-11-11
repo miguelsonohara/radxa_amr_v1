@@ -15,18 +15,19 @@ sudo cp "${WS_DIR}/robot_bringup.service" /etc/systemd/system/robot_bringup.serv
 
 # 2. Allow rctrobot (robot_agent.service) to manage robot_bringup.service without password prompt
 SUDOERS_FILE="/etc/sudoers.d/rctrobot-robot-services"
-echo "rctrobot ALL=(ALL) NOPASSWD: /bin/systemctl start robot_bringup.service, /bin/systemctl stop robot_bringup.service, /bin/systemctl restart robot_bringup.service, /usr/bin/systemctl start robot_bringup.service, /usr/bin/systemctl stop robot_bringup.service, /usr/bin/systemctl restart robot_bringup.service" | sudo tee "$SUDOERS_FILE" >/dev/null
+echo "rctrobot ALL=(ALL) NOPASSWD: /bin/systemctl start robot_bringup.service, /bin/systemctl stop robot_bringup.service, /bin/systemctl restart robot_bringup.service, /bin/systemctl enable robot_bringup.service, /bin/systemctl disable robot_bringup.service, /usr/bin/systemctl start robot_bringup.service, /usr/bin/systemctl stop robot_bringup.service, /usr/bin/systemctl restart robot_bringup.service, /usr/bin/systemctl enable robot_bringup.service, /usr/bin/systemctl disable robot_bringup.service" | sudo tee "$SUDOERS_FILE" >/dev/null
 sudo chmod 0440 "$SUDOERS_FILE"
 
 # 3. Reload systemd daemon
 sudo systemctl daemon-reload
 
-# 4. Enable and start robot_agent.service
+# 4. Enable and start both services
 sudo systemctl enable --now robot_agent.service
-echo "[OK] robot_agent.service enabled and started on http://127.0.0.1:5001"
+sudo systemctl enable --now robot_bringup.service
+echo "[OK] robot_agent.service and robot_bringup.service enabled and started"
 
-# 4. Check status
-sudo systemctl status robot_agent.service --no-pager || true
+# 5. Check status
+sudo systemctl status robot_agent.service robot_bringup.service --no-pager || true
 
 echo "=========================================================="
 echo "To control robot_bringup.service:"

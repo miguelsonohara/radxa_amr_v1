@@ -211,6 +211,12 @@ def generate_launch_description():
         description='Enable Nav2 keepout costmap filters (default: false)'
     )
 
+    declare_enable_wifi_receiver = DeclareLaunchArgument(
+        'enable_wifi_receiver',
+        default_value='false',
+        description='Enable standalone wifi_receiver_node on port 5001 (default: false, handled by robot_agent.service)'
+    )
+
     # --------------------------------------------------------------------------
     # 3. Node Declarations
     # --------------------------------------------------------------------------
@@ -352,11 +358,12 @@ def generate_launch_description():
         }]
     )
 
-    # J. Wi-Fi Credentials Receiver Node
+    # J. Wi-Fi Credentials Receiver Node (Disabled by default; robot_agent.py handles port 5001)
     wifi_receiver_node = Node(
         package='wifi_receiver',
         executable='wifi_receiver_node',
         name='wifi_receiver_node',
+        condition=IfCondition(LaunchConfiguration('enable_wifi_receiver')),
         output='screen'
     )
 
@@ -405,6 +412,7 @@ def generate_launch_description():
     ld.add_action(declare_camera_device)
     ld.add_action(declare_enable_camera)
     ld.add_action(declare_enable_keepout)
+    ld.add_action(declare_enable_wifi_receiver)
     
     # Add Core Driver & Hardware Nodes Immediately
     ld.add_action(micro_ros_agent_node)
