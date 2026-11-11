@@ -137,29 +137,47 @@ wait_for_lidar() {
     return 1
 }
 
+is_usb_capture_cam() {
+    local dev="$1"
+    [ -e "$dev" ] || return 1
+    local props
+    props=$(udevadm info -q property -n "$dev" 2>/dev/null || true)
+    echo "$props" | grep -q '^ID_BUS=usb$' && echo "$props" | grep -q '^ID_V4L_CAPABILITIES=.*:capture:'
+}
+
+find_camera_dev() {
+    if is_usb_capture_cam "/dev/my_camera"; then
+        echo "/dev/my_camera"; return 0
+    fi
+    for dev in /dev/v4l/by-id/*-index0; do
+        if [ -e "$dev" ]; then echo "$dev"; return 0; fi
+    done
+    for dev in /dev/video*; do
+        if is_usb_capture_cam "$dev"; then echo "$dev"; return 0; fi
+    done
+    return 1
+}
+
 wait_for_camera() {
-    local timeout_s="${1:-10}"
+    local timeout_s="${1:-3}"
     local elapsed=0
-    echo "[bringup] Searching dynamically for Camera (/dev/my_camera, /dev/video*)..."
+    echo "[bringup] Checking for USB Camera (/dev/v4l/by-id/*, USB capture /dev/video*)..."
     while [ "$elapsed" -lt "$timeout_s" ]; do
-        if [ -e "/dev/my_camera" ]; then
-            CAM_DEV="/dev/my_camera"
-            echo "[bringup] Camera detected: $CAM_DEV"
+        local dev
+        dev=$(find_camera_dev || true)
+        if [ -n "$dev" ]; then
+            CAM_DEV="$dev"
+            ENABLE_CAMERA="true"
+            echo "[bringup] USB Camera detected: $CAM_DEV (enable_camera:=true)"
             return 0
         fi
-        for v in /dev/video0 /dev/video1; do
-            if [ -e "$v" ]; then
-                CAM_DEV="$v"
-                echo "[bringup] Camera detected: $CAM_DEV"
-                return 0
-            fi
-        done
         sleep 1
         elapsed=$((elapsed + 1))
     done
-    CAM_DEV="${CAM_DEV:-/dev/video0}"
-    echo "[bringup] WARNING: Camera not detected after ${timeout_s}s — defaulting to: $CAM_DEV"
-    return 1
+    CAM_DEV="/dev/video0"
+    ENABLE_CAMERA="false"
+    echo "[bringup] No USB camera connected — skipping usb_cam & YOLO (enable_camera:=false)"
+    return 0
 }
 
 # ------------------------------------------------------------------------------
@@ -185,7 +203,7 @@ wait_for_time_sync() {
 wait_for_time_sync 5
 wait_for_esp32 30
 wait_for_lidar 30
-wait_for_camera 10
+wait_for_camera 3
 
 # Reset ESP32 via DTR/RTS toggle to guarantee clean micro-ROS handshake with accurate host time
 if [ -e "$ESP32_DEV" ]; then
@@ -200,6 +218,7 @@ ros2 launch receptionist_robot_bringup bringup.launch.py \
     serial_port:="$ESP32_DEV" \
     lidar_port:="$LIDAR_DEV" \
     camera_device:="$CAM_DEV" \
+    enable_camera:="$ENABLE_CAMERA" \
     use_sim_time:=false &
 LAUNCH_PID=$!
 

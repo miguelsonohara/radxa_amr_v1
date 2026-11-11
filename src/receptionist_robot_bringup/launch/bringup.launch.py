@@ -88,6 +88,31 @@ def find_lidar_device(exclude=None):
     return '/dev/ttyUSB0'
 
 
+def _is_usb_capture_cam(dev):
+    """True only for real USB V4L2 capture cameras (skips Amlogic meson-vdec /dev/video0)."""
+    if not os.path.exists(dev):
+        return False
+    try:
+        out = subprocess.check_output(['udevadm', 'info', '-q', 'property', '-n', dev],
+                                      text=True, stderr=subprocess.DEVNULL, timeout=2)
+        return ('ID_BUS=usb' in out.splitlines()) and (':capture:' in out)
+    except Exception:
+        return False
+
+
+def find_camera_device():
+    """Returns (device_path, found_bool) for a connected USB V4L2 capture camera."""
+    if _is_usb_capture_cam('/dev/my_camera'):
+        return '/dev/my_camera', True
+    for dev in sorted(glob.glob('/dev/v4l/by-id/*-index0')):
+        if os.path.exists(dev):
+            return dev, True
+    for dev in sorted(glob.glob('/dev/video*')):
+        if _is_usb_capture_cam(dev):
+            return dev, True
+    return '/dev/video0', False
+
+
 def generate_launch_description():
     # --------------------------------------------------------------------------
     # 1. Package Paths & Configuration File Locators
@@ -115,7 +140,7 @@ def generate_launch_description():
     # --------------------------------------------------------------------------
     default_esp32_port = find_esp32_device()
     default_lidar_port = find_lidar_device(exclude=default_esp32_port)
-    default_cam_port = '/dev/my_camera' if os.path.exists('/dev/my_camera') else ('/dev/video0' if os.path.exists('/dev/video0') else '/dev/video1')
+    default_cam_port, has_usb_cam = find_camera_device()
     
     # Use Simulation Time: Set to 'true' if running inside Gazebo/Webots, 
     # but 'false' when running on the actual Radxa and ESP32 hardware.
@@ -172,6 +197,12 @@ def generate_launch_description():
         'camera_device',
         default_value=default_cam_port,
         description='Video device path for usb_cam (auto-detected)'
+    )
+
+    declare_enable_camera = DeclareLaunchArgument(
+        'enable_camera',
+        default_value='true' if has_usb_cam else 'false',
+        description='Enable usb_cam and yolov11_pose_detector (auto-disabled if no USB camera connected)'
     )
 
     declare_enable_keepout = DeclareLaunchArgument(
@@ -250,11 +281,12 @@ def generate_launch_description():
         remappings=[('/odometry/filtered', '/odom/filtered')]
     )
 
-    # G. USB Camera Node
+    # G. USB Camera Node (Auto-skipped when enable_camera:=false)
     usb_cam_node = Node(
         package='usb_cam',
         executable='usb_cam_node_exe',
         name='usb_cam',
+        condition=IfCondition(LaunchConfiguration('enable_camera')),
         parameters=[{
             'video_device': LaunchConfiguration('camera_device'),
             'image_width': 640,
@@ -265,11 +297,12 @@ def generate_launch_description():
         output='screen'
     )
 
-    # H. YOLOv11 Pose Detector Node
+    # H. YOLOv11 Pose Detector Node (Auto-skipped when enable_camera:=false)
     yolo_pose_node = Node(
         package='yolov11_pose_detector',
         executable='pose_detector_node',
         name='yolov11_pose_detector',
+        condition=IfCondition(LaunchConfiguration('enable_camera')),
         output='screen'
     )
 
@@ -370,6 +403,7 @@ def generate_launch_description():
     ld.add_action(declare_scan_mode)
     ld.add_action(declare_lidar_model)
     ld.add_action(declare_camera_device)
+    ld.add_action(declare_enable_camera)
     ld.add_action(declare_enable_keepout)
     
     # Add Core Driver & Hardware Nodes Immediately
