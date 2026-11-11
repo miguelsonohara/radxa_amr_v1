@@ -39,12 +39,14 @@ sudo apt install -y \
 
 ## 3. Cài Đặt Toàn Bộ Dependencies Cho Robot Stack
 
-Cài đặt tất cả các package hệ thống cần thiết cho điều hướng, cảm biến, micro-ROS và thị giác máy tính:
+Cài đặt tất cả các package hệ thống cần thiết cho điều hướng (Nav2), SLAM, EKF, camera (`usb_cam` cần FFmpeg + OpenCV dev headers), micro-ROS và thị giác máy tính (ONNX Runtime CPU):
 
 ```bash
+sudo apt update
 sudo apt install -y \
   ros-jazzy-xacro \
   ros-jazzy-nav2-bringup \
+  ros-jazzy-navigation2 \
   ros-jazzy-slam-toolbox \
   ros-jazzy-robot-localization \
   ros-jazzy-teleop-twist-keyboard \
@@ -52,33 +54,57 @@ sudo apt install -y \
   ros-jazzy-camera-info-manager \
   ros-jazzy-cv-bridge \
   ros-jazzy-image-transport \
+  ros-jazzy-image-transport-plugins \
   libopencv-dev \
+  libavcodec-dev \
+  libavutil-dev \
+  libswscale-dev \
   libv4l-dev \
   v4l-utils \
   python3-opencv \
   python3-numpy \
   python3-serial \
+  python3-pydantic \
   python3-pip
 
-pip install onnxruntime --break-system-packages
+pip3 install onnxruntime --break-system-packages
 ```
 
 ---
 
 ## 4. Chuẩn Bị & Cập Nhật Mã Nguồn Workspace
 
-Khi clone repo chính `radxa_amr_v1` về thư mục người dùng:
+### 4.1. Clone repository chính
 ```bash
 cd ~
 git clone https://github.com/miguelsonohara/radxa_amr_v1.git
 cd ~/radxa_amr_v1
 ```
 
+### 4.2. Chuẩn bị `micro_ros_msgs` & `micro-ROS-Agent` (Bắt buộc nhánh `jazzy`)
+> **Lưu ý quan trọng:** Nhánh mặc định của `micro-ROS-Agent` trên GitHub là `kilted` (yêu cầu Fast-DDS v3, gây lỗi `Could not find fastdds version 3` trên ROS 2 Jazzy). Luôn đảm bảo cả 2 gói nằm ở nhánh `jazzy`:
+
+```bash
+cd ~/radxa_amr_v1
+
+# Clone micro_ros_msgs nhánh jazzy (nếu chưa có)
+if [ ! -d "src/micro_ros_msgs" ]; then
+  git clone -b jazzy https://github.com/micro-ROS/micro_ros_msgs.git src/micro_ros_msgs
+fi
+
+# Clone hoặc chuyển micro-ROS-Agent sang nhánh jazzy
+if [ ! -d "src/micro-ROS-Agent" ]; then
+  git clone -b jazzy https://github.com/micro-ROS/micro-ROS-Agent.git src/micro-ROS-Agent
+else
+  git -C src/micro-ROS-Agent checkout jazzy
+fi
+```
+
 ---
 
 ## 5. Biên Dịch Workspace
 
-Quay về thư mục gốc của workspace và thực hiện build:
+Quay về thư mục gốc của workspace và thực hiện build (lần build đầu tiên của `micro_ros_agent` sẽ tải `xrceagent` v2.4.3 và biên dịch trong khoảng 4–5 phút):
 
 ```bash
 cd ~/radxa_amr_v1
@@ -93,7 +119,7 @@ source install/setup.bash
 
 ---
 
-## 6. Cấu Hình Environment & Quyền Truy Cập Thiết Bị
+## 6. Cấu Hình Environment, Udev Rules & Quyền Truy Cập Thiết Bị
 
 ### 6.1. Tự động source vào `~/.bashrc`
 ```bash
@@ -102,12 +128,12 @@ echo "source ~/radxa_amr_v1/install/setup.bash" >> ~/.bashrc
 source ~/.bashrc
 ```
 
-### 6.2. Phân quyền truy cập Serial Port và Camera
-Thêm user `rctrobot` vào group `dialout` và `video` để truy cập mạch ESP32, LiDAR và Camera mà không cần `sudo`:
+### 6.2. Cài đặt Udev Rules & Phân quyền Serial / Camera
+Chạy script tạo symlink cố định (`/dev/robot_esp32`, `/dev/robot_lidar`, `/dev/rplidar`) và tự động thêm user `rctrobot` vào group `dialout`, `video`:
 ```bash
-sudo usermod -a -G dialout,video $USER
+~/radxa_amr_v1/scripts/create_robot_udev_rules.sh
 ```
-*(Cần log out và log in lại để phân quyền có hiệu lực)*.
+*(Lưu ý: Ngay cả khi chưa chạy udev rules hoặc khi thay thế bo ESP32 / LiDAR khác mã Serial ID, `start_robot_bringup.sh` và `bringup.launch.py` vẫn tự động quét theo USB Vendor ID `1a86/303a` và `10c4`).*
 
 ---
 
@@ -117,9 +143,10 @@ Chạy script cài đặt dịch vụ tự động cho Single-Board:
 ```bash
 ~/radxa_amr_v1/scripts/install_robot_services.sh
 ```
-Script sẽ tự động đăng ký:
-1. `robot_agent.service`: Daemon HTTP tại `http://127.0.0.1:5001` nhận lệnh điều khiển từ Web Gateway (`radxa_llm_web_v1`).
-2. `robot_bringup.service`: Stack khởi động headless cho toàn bộ phần cứng và Nav2.
+Script sẽ tự động thực hiện:
+1. Đăng ký và chạy `robot_agent.service`: Daemon HTTP tại `http://127.0.0.1:5001` nhận lệnh điều khiển từ Web Gateway (`radxa_llm_web_v1`).
+2. Đăng ký `robot_bringup.service`: Stack khởi động headless cho toàn bộ phần cứng, SLAM, Nav2 và YOLO.
+3. Tạo quyền `NOPASSWD` trong `/etc/sudoers.d/rctrobot-robot-services` để `robot_agent.service` có thể `start/stop/restart` dịch vụ `robot_bringup.service` mà không bị treo chờ mật khẩu.
 
 ---
 
