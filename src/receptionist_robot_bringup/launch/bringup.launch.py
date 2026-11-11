@@ -54,9 +54,10 @@ def find_esp32_device(exclude=None):
     """Dynamically detects ESP32-S3 serial port across board swaps (never returns the LiDAR port)."""
     if _usable('/dev/robot_esp32', exclude):
         return '/dev/robot_esp32'
-    for pat in ['/dev/serial/by-id/*1a86*', '/dev/serial/by-id/*wch*', '/dev/serial/by-id/*Espressif*', '/dev/serial/by-id/*Single_Serial*']:
+    # Anchor to usb-1a86_ prefix and verify VID so a LiDAR serial containing '1a86' in its hex UUID never matches
+    for pat in ['/dev/serial/by-id/usb-1a86_*', '/dev/serial/by-id/usb-wch*', '/dev/serial/by-id/usb-Espressif_*', '/dev/serial/by-id/*Single_Serial*']:
         for dev in sorted(glob.glob(pat)):
-            if _usable(dev, exclude):
+            if _usable(dev, exclude) and _usb_vid(dev) not in LIDAR_VIDS:
                 return dev
     candidates = sorted(glob.glob('/dev/ttyACM*')) + sorted(glob.glob('/dev/ttyUSB*'))
     for dev in candidates:
@@ -73,9 +74,9 @@ def find_lidar_device(exclude=None):
     for symlink in ['/dev/robot_lidar', '/dev/rplidar']:
         if _usable(symlink, exclude):
             return symlink
-    for pat in ['/dev/serial/by-id/*CP210*', '/dev/serial/by-id/*Silicon_Labs*', '/dev/serial/by-id/*RPLIDAR*', '/dev/serial/by-id/*rplidar*']:
+    for pat in ['/dev/serial/by-id/usb-Silicon_Labs_*', '/dev/serial/by-id/*CP210*', '/dev/serial/by-id/*RPLIDAR*', '/dev/serial/by-id/*rplidar*']:
         for dev in sorted(glob.glob(pat)):
-            if _usable(dev, exclude):
+            if _usable(dev, exclude) and _usb_vid(dev) not in ESP32_VIDS:
                 return dev
     candidates = sorted(glob.glob('/dev/ttyUSB*'))
     for dev in candidates:

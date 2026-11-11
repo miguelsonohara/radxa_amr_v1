@@ -49,9 +49,11 @@ find_esp32_dev() {
     local exclude="${1:-}"
     # 1. Persistent udev symlink
     if dev_usable "/dev/robot_esp32" "$exclude"; then echo "/dev/robot_esp32"; return 0; fi
-    # 2. Match by-id wildcards (QinHeng CH340/CH341/CH343/WCH 1a86, Espressif 303a)
-    for dev in /dev/serial/by-id/*1a86* /dev/serial/by-id/*wch* /dev/serial/by-id/*Espressif* /dev/serial/by-id/*Single_Serial*; do
-        if dev_usable "$dev" "$exclude"; then echo "$dev"; return 0; fi
+    # 2. Match by-id prefix (anchored to usb-1a86_ so hex serials containing '1a86' on other devices never match)
+    for dev in /dev/serial/by-id/usb-1a86_* /dev/serial/by-id/usb-wch* /dev/serial/by-id/usb-Espressif_* /dev/serial/by-id/*Single_Serial*; do
+        if dev_usable "$dev" "$exclude" && ! vid_in "$(get_udev_vid "$dev")" $LIDAR_VIDS; then
+            echo "$dev"; return 0
+        fi
     done
     # 3. Any ttyACM*/ttyUSB* whose vendor ID is a known ESP32 bridge
     for dev in /dev/ttyACM* /dev/ttyUSB*; do
@@ -75,8 +77,10 @@ find_lidar_dev() {
         if dev_usable "$symlink" "$exclude"; then echo "$symlink"; return 0; fi
     done
     # 2. Match by-id wildcards for Silicon Labs CP210x (used by RPLidar & HCLiDAR)
-    for dev in /dev/serial/by-id/*CP210* /dev/serial/by-id/*Silicon_Labs* /dev/serial/by-id/*RPLIDAR* /dev/serial/by-id/*rplidar*; do
-        if dev_usable "$dev" "$exclude"; then echo "$dev"; return 0; fi
+    for dev in /dev/serial/by-id/usb-Silicon_Labs_* /dev/serial/by-id/*CP210* /dev/serial/by-id/*RPLIDAR* /dev/serial/by-id/*rplidar*; do
+        if dev_usable "$dev" "$exclude" && ! vid_in "$(get_udev_vid "$dev")" $ESP32_VIDS; then
+            echo "$dev"; return 0
+        fi
     done
     # 3. Any ttyUSB* whose vendor ID is Silicon Labs
     for dev in /dev/ttyUSB*; do
