@@ -25,43 +25,44 @@ get_udev_vid() {
     udevadm info -q property -n "$dev" 2>/dev/null | grep -E '^ID_VENDOR_ID=' | cut -d'=' -f2 | tr '[:upper:]' '[:lower:]'
 }
 
+# True if candidate exists and is NOT the same physical node as $exclude
+# (compares resolved paths, so /dev/serial/by-id/... and /dev/ttyUSB0 are treated as identical)
+dev_usable() {
+    local cand="$1"
+    local exclude="${2:-}"
+    [ -e "$cand" ] || return 1
+    [ -z "$exclude" ] && return 0
+    [ "$(readlink -f "$cand")" != "$(readlink -f "$exclude")" ]
+}
+
+# Vendor IDs: ESP32 bridges = 1a86 (QinHeng CH34x) / 303a (Espressif native USB); LiDAR = 10c4 (Silicon Labs CP210x)
+ESP32_VIDS="1a86 303a"
+LIDAR_VIDS="10c4"
+
+vid_in() {
+    local vid="$1"; shift
+    for v in "$@"; do [ "$vid" = "$v" ] && return 0; done
+    return 1
+}
+
 find_esp32_dev() {
     local exclude="${1:-}"
     # 1. Persistent udev symlink
-    if [ -e "/dev/robot_esp32" ] && [ "/dev/robot_esp32" != "$exclude" ]; then
-        echo "/dev/robot_esp32"
-        return 0
-    fi
+    if dev_usable "/dev/robot_esp32" "$exclude"; then echo "/dev/robot_esp32"; return 0; fi
     # 2. Match by-id wildcards (QinHeng CH340/CH341/CH343/WCH 1a86, Espressif 303a)
     for dev in /dev/serial/by-id/*1a86* /dev/serial/by-id/*wch* /dev/serial/by-id/*Espressif* /dev/serial/by-id/*Single_Serial*; do
-        if [ -e "$dev" ] && [ "$dev" != "$exclude" ]; then
-            echo "$dev"
-            return 0
-        fi
+        if dev_usable "$dev" "$exclude"; then echo "$dev"; return 0; fi
     done
-    # 3. Native USB CDC (/dev/ttyACM*)
-    for dev in /dev/ttyACM*; do
-        if [ -e "$dev" ] && [ "$dev" != "$exclude" ]; then
-            echo "$dev"
-            return 0
-        fi
-    done
-    # 4. Check all /dev/ttyUSB* for vendor 1a86 (QinHeng) or 303a (Espressif)
-    for dev in /dev/ttyUSB*; do
-        if [ -e "$dev" ] && [ "$dev" != "$exclude" ]; then
-            local vid
-            vid=$(get_udev_vid "$dev")
-            if [ "$vid" = "1a86" ] || [ "$vid" = "303a" ]; then
-                echo "$dev"
-                return 0
-            fi
-        fi
-    done
-    # 5. Fallback: any available ttyACM or ttyUSB not excluded
+    # 3. Any ttyACM*/ttyUSB* whose vendor ID is a known ESP32 bridge
     for dev in /dev/ttyACM* /dev/ttyUSB*; do
-        if [ -e "$dev" ] && [ "$dev" != "$exclude" ]; then
-            echo "$dev"
-            return 0
+        if dev_usable "$dev" "$exclude" && vid_in "$(get_udev_vid "$dev")" $ESP32_VIDS; then
+            echo "$dev"; return 0
+        fi
+    done
+    # 4. Fallback: any ttyACM*/ttyUSB* that is NOT a LiDAR bridge (never steal the LiDAR port)
+    for dev in /dev/ttyACM* /dev/ttyUSB*; do
+        if dev_usable "$dev" "$exclude" && ! vid_in "$(get_udev_vid "$dev")" $LIDAR_VIDS; then
+            echo "$dev"; return 0
         fi
     done
     return 1
@@ -71,34 +72,22 @@ find_lidar_dev() {
     local exclude="${1:-}"
     # 1. Persistent udev symlinks
     for symlink in "/dev/robot_lidar" "/dev/rplidar"; do
-        if [ -e "$symlink" ] && [ "$symlink" != "$exclude" ]; then
-            echo "$symlink"
-            return 0
-        fi
+        if dev_usable "$symlink" "$exclude"; then echo "$symlink"; return 0; fi
     done
     # 2. Match by-id wildcards for Silicon Labs CP210x (used by RPLidar & HCLiDAR)
     for dev in /dev/serial/by-id/*CP210* /dev/serial/by-id/*Silicon_Labs* /dev/serial/by-id/*RPLIDAR* /dev/serial/by-id/*rplidar*; do
-        if [ -e "$dev" ] && [ "$dev" != "$exclude" ]; then
-            echo "$dev"
-            return 0
+        if dev_usable "$dev" "$exclude"; then echo "$dev"; return 0; fi
+    done
+    # 3. Any ttyUSB* whose vendor ID is Silicon Labs
+    for dev in /dev/ttyUSB*; do
+        if dev_usable "$dev" "$exclude" && vid_in "$(get_udev_vid "$dev")" $LIDAR_VIDS; then
+            echo "$dev"; return 0
         fi
     done
-    # 3. Check all /dev/ttyUSB* for vendor 10c4 (Silicon Labs)
+    # 4. Fallback: any ttyUSB* that is NOT an ESP32 bridge (never steal the ESP32 port)
     for dev in /dev/ttyUSB*; do
-        if [ -e "$dev" ] && [ "$dev" != "$exclude" ]; then
-            local vid
-            vid=$(get_udev_vid "$dev")
-            if [ "$vid" = "10c4" ]; then
-                echo "$dev"
-                return 0
-            fi
-        fi
-    done
-    # 4. Fallback: any ttyUSB not excluded
-    for dev in /dev/ttyUSB*; do
-        if [ -e "$dev" ] && [ "$dev" != "$exclude" ]; then
-            echo "$dev"
-            return 0
+        if dev_usable "$dev" "$exclude" && ! vid_in "$(get_udev_vid "$dev")" $ESP32_VIDS; then
+            echo "$dev"; return 0
         fi
     done
     return 1

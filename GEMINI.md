@@ -70,7 +70,7 @@ graph TD
 | `/cmd_vel_smoothed`| `geometry_msgs/msg/Twist` | Velocity Smoother | Collision Monitor | Smoothed output from Nav2. |
 | `/odom` | `nav_msgs/msg/Odometry` | ESP32-S3 | EKF Node / Nav2 | Raw dual-wheel encoder odometry. |
 | `/imu` | `sensor_msgs/msg/Imu` | ESP32-S3 | EKF Node | Raw IMU orientation & angular velocity. |
-| `/odometry/filtered`| `nav_msgs/msg/Odometry` | EKF Node | Nav2 / SLAM | Sensor-fused odometry output. |
+| `/odom/filtered` | `nav_msgs/msg/Odometry` | EKF Node | Nav2 / SLAM | Sensor-fused odometry output (remapped from `/odometry/filtered`). |
 | `/tf` | `tf2_msgs/msg/TFMessage` | EKF Node / Robot State Pub | TF Tree | Coordinate transformations ($odom \rightarrow base\_link$, etc.). ESP32 does NOT publish TF. |
 | `/scan` | `sensor_msgs/msg/LaserScan` | HCLiDAR Driver / RPLidar | SLAM / Nav2 | Laser range scans for obstacle avoidance. |
 | `/goal_pose` | `geometry_msgs/msg/PoseStamped` | robot_agent.py / Web UI | Nav2 | Navigation goal target position. |

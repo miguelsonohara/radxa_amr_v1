@@ -227,11 +227,11 @@ def control_bringup_service(action: str) -> Tuple[bool, str]:
     if action not in ["start", "stop", "restart"]:
         return False, f"Hành động không hợp lệ: {action}"
 
-    cmd = ["sudo", "systemctl", action, SERVICE_NAME]
-    ok, _, err = run_cmd(cmd)
+    cmd = ["sudo", "-n", "systemctl", action, SERVICE_NAME]
+    ok, _, err = run_cmd(cmd, timeout=15)
     if not ok and ("password" in err.lower() or "privilege" in err.lower()):
         # Try direct systemctl if user has polkit authorization
-        ok, _, err = run_cmd(["systemctl", action, SERVICE_NAME])
+        ok, _, err = run_cmd(["systemctl", action, SERVICE_NAME], timeout=15)
 
     if ok:
         return True, f"Đã thực hiện {action} dịch vụ {SERVICE_NAME}"

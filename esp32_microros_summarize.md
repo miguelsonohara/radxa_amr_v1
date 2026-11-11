@@ -1,6 +1,6 @@
 # ESP32-S3 micro-ROS Robot Controller (Firmware Overview)
 
-This workspace contains the C/C++ firmware (using ESP-IDF v5.x) running on an ESP32-S3. It connects to a Radxa Q6a over a custom UART serial transport to execute differential-drive robot commands and publish odometry feedback.
+This workspace contains the C/C++ firmware (using ESP-IDF v5.x) running on an ESP32-S3. It connects to the Banana Pi BPI-CM4-IO (`bananapicm4io`) host over a custom UART/USB serial transport to execute differential-drive robot commands and publish odometry/IMU feedback.
 
 ---
 
@@ -8,13 +8,14 @@ This workspace contains the C/C++ firmware (using ESP-IDF v5.x) running on an ES
 
 * **Transport:** Serial UART on `UART_NUM_0` configured via a custom transport layer (`esp32_serial_transport.c`).
 * **Protocol:** micro-ROS (ROS 2 Jazzy).
-* **Baud Rate:** `115200` baud.
+* **Baud Rate:** `921600` baud.
 * **Topics Subscribed:**
   * `/cmd_vel` (`geometry_msgs/msg/TwistStamped`) - Teleop/manual control commands.
   * `/cmd_vel_nav` (`geometry_msgs/msg/TwistStamped`) - Autonomous navigation commands.
 * **Topics Published:**
-  * `/odom` (`nav_msgs/msg/Odometry`) - Odometry containing pose, linear velocity, and angular velocity.
-  * `/tf` (`tf2_msgs/msg/TFMessage`) - Coordinate frame transforms ($odom \rightarrow base\_link$).
+  * `/odom` (`nav_msgs/msg/Odometry`) - Raw dual-wheel encoder odometry containing pose, linear velocity, and angular velocity.
+  * `/imu` (`sensor_msgs/msg/Imu`) - Raw IMU orientation and angular velocity.
+  * *(Note: ESP32 does **not** publish `/tf`; the `$odom \rightarrow base\_link$` transform is published by `ekf_node` on the host).*
 
 ---
 
@@ -22,8 +23,8 @@ This workspace contains the C/C++ firmware (using ESP-IDF v5.x) running on an ES
 
 ### A. Main Coordinator: `main/hello_world_main.c`
 
-* **`micro_ros_task`:** A state machine that manages the connection lifecycle with the Radxa agent:
-  * **`STATE_WAITING_AGENT`:** Pings the agent at 115200 baud.
+* **`micro_ros_task`:** A state machine that manages the connection lifecycle with the host agent:
+  * **`STATE_WAITING_AGENT`:** Pings the agent at 921600 baud.
   * **`STATE_INITIALIZING`:** Prepares nodes, executors, subscriptions, and publishers.
   * **`STATE_PUBLISHING`:** Spins the executor for callbacks and publishes odometry at **20Hz** (50ms).
   * **`STATE_DEINITIALIZING` / Auto-Reconnection:** If a ping fails (agent disconnected or restarted), the ESP32 automatically stops the motors and reboots via `esp_restart()`. This guarantees a clean reconnection handshake and resets encoder ticks to `0` to synchronize with the new ROS 2 session.

@@ -27,7 +27,15 @@ from nav2_msgs.action import NavigateToPose
 import tf2_ros
 import tf2_geometry_msgs
 from cv_bridge import CvBridge
-from ultralytics import YOLO
+
+# ultralytics (PyTorch) is only needed for the .pt fallback / ONNX export path.
+# Keep it optional so the ONNX Runtime CPU path works without installing torch on ARM.
+try:
+    from ultralytics import YOLO
+    HAS_ULTRALYTICS = True
+except ImportError:
+    YOLO = None
+    HAS_ULTRALYTICS = False
 
 try:
     import onnxruntime as ort
@@ -230,7 +238,7 @@ class YoloV11PoseDetectorNode(Node):
         onnx_model_path = os.path.join(self.workspace_dir, onnx_model_name)
         
         if HAS_ONNXRUNTIME:
-            if not os.path.exists(onnx_model_path):
+            if not os.path.exists(onnx_model_path) and HAS_ULTRALYTICS:
                 self.get_logger().info("ONNX model not found. Generating from PyTorch...")
                 pt_model_name = self.model_name if self.model_name.endswith('.pt') else self.model_name.replace('.onnx', '.pt')
                 pt_model_path = os.path.join(self.workspace_dir, pt_model_name)
@@ -253,6 +261,11 @@ class YoloV11PoseDetectorNode(Node):
                 self.get_logger().info("ONNX Runtime session initialized successfully!")
 
         if not self.use_onnx:
+            if not HAS_ULTRALYTICS:
+                raise RuntimeError(
+                    f"Neither onnxruntime (with model at {onnx_model_path}) nor ultralytics is available. "
+                    "Install onnxruntime: pip install onnxruntime --break-system-packages"
+                )
             pt_model_name = self.model_name if self.model_name.endswith('.pt') else self.model_name.replace('.onnx', '.pt')
             pt_model_path = os.path.join(self.workspace_dir, pt_model_name)
             self.model = YOLO(pt_model_path)

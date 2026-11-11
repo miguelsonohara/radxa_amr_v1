@@ -52,11 +52,15 @@ sudo apt install -y \
   ros-jazzy-camera-info-manager \
   ros-jazzy-cv-bridge \
   ros-jazzy-image-transport \
+  libopencv-dev \
   libv4l-dev \
   v4l-utils \
   python3-opencv \
   python3-numpy \
-  python3-serial
+  python3-serial \
+  python3-pip
+
+pip install onnxruntime --break-system-packages
 ```
 
 ---

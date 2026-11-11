@@ -20,7 +20,7 @@ Ensure all hardware (ESP32-S3, RPLidar) is connected to the Radxa board.
 2. **Source the ROS 2 Workspace**:
    Open a terminal on your Radxa board, navigate to the workspace, and source it:
    ```bash
-   cd ~/receptionist_robot_ws
+   cd ~/radxa_amr_v1
    source /opt/ros/jazzy/setup.bash
    source install/setup.bash
    ```
@@ -176,7 +176,7 @@ Open a new terminal, source the workspace, and launch the detector node.
 
 * **Standard Launch (Uses defaults)**:
   ```bash
-  source ~/receptionist_robot_ws/install/setup.bash
+  source ~/radxa_amr_v1/install/setup.bash
   ros2 run yolov11_pose_detector pose_detector_node
   ```
 

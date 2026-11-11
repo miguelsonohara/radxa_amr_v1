@@ -26,50 +26,63 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
+ESP32_VIDS = ('1a86', '303a')   # QinHeng CH34x bridge / Espressif native USB
+LIDAR_VIDS = ('10c4',)          # Silicon Labs CP210x (RPLidar / HCLiDAR)
+
+
+def _usb_vid(dev):
+    """Returns the lowercase USB vendor ID of a tty node ('' if unknown)."""
+    try:
+        out = subprocess.check_output(['udevadm', 'info', '-q', 'property', '-n', dev],
+                                      text=True, stderr=subprocess.DEVNULL, timeout=2)
+        for line in out.splitlines():
+            if line.startswith('ID_VENDOR_ID='):
+                return line.split('=', 1)[1].strip().lower()
+    except Exception:
+        pass
+    return ''
+
+
+def _usable(dev, exclude):
+    """True if dev exists and is not the same physical node as exclude (symlinks resolved)."""
+    if not os.path.exists(dev):
+        return False
+    return exclude is None or os.path.realpath(dev) != os.path.realpath(exclude)
+
+
 def find_esp32_device(exclude=None):
-    """Dynamically detects ESP32-S3 serial port across board swaps."""
-    if os.path.exists('/dev/robot_esp32') and '/dev/robot_esp32' != exclude:
+    """Dynamically detects ESP32-S3 serial port across board swaps (never returns the LiDAR port)."""
+    if _usable('/dev/robot_esp32', exclude):
         return '/dev/robot_esp32'
     for pat in ['/dev/serial/by-id/*1a86*', '/dev/serial/by-id/*wch*', '/dev/serial/by-id/*Espressif*', '/dev/serial/by-id/*Single_Serial*']:
         for dev in sorted(glob.glob(pat)):
-            if dev != exclude and os.path.exists(dev):
+            if _usable(dev, exclude):
                 return dev
-    for dev in sorted(glob.glob('/dev/ttyACM*')):
-        if dev != exclude and os.path.exists(dev):
+    candidates = sorted(glob.glob('/dev/ttyACM*')) + sorted(glob.glob('/dev/ttyUSB*'))
+    for dev in candidates:
+        if _usable(dev, exclude) and _usb_vid(dev) in ESP32_VIDS:
             return dev
-    for dev in sorted(glob.glob('/dev/ttyUSB*')):
-        if dev != exclude and os.path.exists(dev):
-            try:
-                vid = subprocess.check_output(['udevadm', 'info', '-q', 'property', '-n', dev], text=True, stderr=subprocess.DEVNULL)
-                if 'ID_VENDOR_ID=1a86' in vid or 'ID_VENDOR_ID=303a' in vid:
-                    return dev
-            except Exception:
-                pass
-    for dev in sorted(glob.glob('/dev/ttyACM*') + glob.glob('/dev/ttyUSB*')):
-        if dev != exclude and os.path.exists(dev):
+    for dev in candidates:
+        if _usable(dev, exclude) and _usb_vid(dev) not in LIDAR_VIDS:
             return dev
     return '/dev/ttyACM0'
 
 
 def find_lidar_device(exclude=None):
-    """Dynamically detects LiDAR serial port across sensor swaps."""
+    """Dynamically detects LiDAR serial port across sensor swaps (never returns the ESP32 port)."""
     for symlink in ['/dev/robot_lidar', '/dev/rplidar']:
-        if os.path.exists(symlink) and symlink != exclude:
+        if _usable(symlink, exclude):
             return symlink
     for pat in ['/dev/serial/by-id/*CP210*', '/dev/serial/by-id/*Silicon_Labs*', '/dev/serial/by-id/*RPLIDAR*', '/dev/serial/by-id/*rplidar*']:
         for dev in sorted(glob.glob(pat)):
-            if dev != exclude and os.path.exists(dev):
+            if _usable(dev, exclude):
                 return dev
-    for dev in sorted(glob.glob('/dev/ttyUSB*')):
-        if dev != exclude and os.path.exists(dev):
-            try:
-                vid = subprocess.check_output(['udevadm', 'info', '-q', 'property', '-n', dev], text=True, stderr=subprocess.DEVNULL)
-                if 'ID_VENDOR_ID=10c4' in vid:
-                    return dev
-            except Exception:
-                pass
-    for dev in sorted(glob.glob('/dev/ttyUSB*')):
-        if dev != exclude and os.path.exists(dev):
+    candidates = sorted(glob.glob('/dev/ttyUSB*'))
+    for dev in candidates:
+        if _usable(dev, exclude) and _usb_vid(dev) in LIDAR_VIDS:
+            return dev
+    for dev in candidates:
+        if _usable(dev, exclude) and _usb_vid(dev) not in ESP32_VIDS:
             return dev
     return '/dev/ttyUSB0'
 

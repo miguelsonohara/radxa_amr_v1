@@ -13,10 +13,15 @@ echo "=== Installing Robot Systemd Services for BPI-CM4-IO ==="
 sudo cp "${WS_DIR}/robot_agent.service" /etc/systemd/system/robot_agent.service
 sudo cp "${WS_DIR}/robot_bringup.service" /etc/systemd/system/robot_bringup.service
 
-# 2. Reload systemd daemon
+# 2. Allow rctrobot (robot_agent.service) to manage robot_bringup.service without password prompt
+SUDOERS_FILE="/etc/sudoers.d/rctrobot-robot-services"
+echo "rctrobot ALL=(ALL) NOPASSWD: /bin/systemctl start robot_bringup.service, /bin/systemctl stop robot_bringup.service, /bin/systemctl restart robot_bringup.service, /usr/bin/systemctl start robot_bringup.service, /usr/bin/systemctl stop robot_bringup.service, /usr/bin/systemctl restart robot_bringup.service" | sudo tee "$SUDOERS_FILE" >/dev/null
+sudo chmod 0440 "$SUDOERS_FILE"
+
+# 3. Reload systemd daemon
 sudo systemctl daemon-reload
 
-# 3. Enable and start robot_agent.service
+# 4. Enable and start robot_agent.service
 sudo systemctl enable --now robot_agent.service
 echo "[OK] robot_agent.service enabled and started on http://127.0.0.1:5001"
 
