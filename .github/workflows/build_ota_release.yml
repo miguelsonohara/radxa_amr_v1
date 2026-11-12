@@ -1,0 +1,71 @@
+name: Build & Publish OTA Release Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Extract Tag Name
+        id: vars
+        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: Set up QEMU for ARM64 build (if cross-compilation needed)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Package AMR Release Bundle
+        run: |
+          VERSION=${{ env.TAG_NAME }}
+          RELEASE_NAME="radxa_amr_${VERSION}_arm64"
+          BUILD_DIR="amr_bundle/${RELEASE_NAME}"
+          mkdir -p "${BUILD_DIR}"
+
+          # 1. Copy essential runtime source and scripts
+          cp -r src "${BUILD_DIR}/"
+          cp -r scripts "${BUILD_DIR}/"
+          cp -r launch "${BUILD_DIR}/" 2>/dev/null || true
+          cp *.sh "${BUILD_DIR}/" 2>/dev/null || true
+          cp *.service "${BUILD_DIR}/" 2>/dev/null || true
+          cp CMakeLists.txt "${BUILD_DIR}/" 2>/dev/null || true
+          cp package.xml "${BUILD_DIR}/" 2>/dev/null || true
+          cp README.md "${BUILD_DIR}/" 2>/dev/null || true
+          
+          # If pre-built install/ exists, include it
+          if [ -d "install" ]; then
+            cp -r install "${BUILD_DIR}/"
+          fi
+
+          # 2. Exclude maps, logs, temp data to keep bundle clean
+          rm -rf "${BUILD_DIR}/map" "${BUILD_DIR}/build" "${BUILD_DIR}/log"
+
+          # 3. Create tarball
+          tar -czf "${RELEASE_NAME}.tar.gz" -C amr_bundle "${RELEASE_NAME}"
+          
+          # 4. Generate SHA256 Checksum
+          sha256sum "${RELEASE_NAME}.tar.gz" > sha256.txt
+          cat sha256.txt
+
+      - name: Create GitHub Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: "Release ${{ env.TAG_NAME }}"
+          body: |
+            ## Receptionist Robot AMR Core Release ${{ env.TAG_NAME }}
+            Tự động đóng gói bởi GitHub Actions CI/CD.
+            
+            ### Cách thức OTA:
+            Kích hoạt trực tiếp từ Local Web Kiosk qua API `/api/ota/apply`.
+          files: |
+            radxa_amr_${{ env.TAG_NAME }}_arm64.tar.gz
+            sha256.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

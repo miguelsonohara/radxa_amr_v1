@@ -14,12 +14,25 @@ import json
 import math
 import os
 import re
+import sys
 import socketserver
 import subprocess
 import threading
 import time
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, List
+
+# Add scripts directory to sys.path to load ota_engine
+sys_scripts_dir = str(Path(__file__).resolve().parent)
+if sys_scripts_dir not in sys.path:
+    sys.path.insert(0, sys_scripts_dir)
+
+try:
+    import ota_engine
+    HAS_OTA = True
+except Exception as e:
+    print(f"[robot_agent] Warning: ota_engine could not be loaded: {e}")
+    HAS_OTA = False
 
 # ROS 2 imports (graceful fallback if rclpy is not yet sourced)
 try:
@@ -32,10 +45,10 @@ except ImportError:
 
 PORT = 5001
 WS_DIR = Path(__file__).resolve().parent.parent
-MAPS_DIR = WS_DIR / "map"
+MAPS_DIR = Path("/home/rctrobot/robot_data/maps")
 PARAMS_FILE = WS_DIR / "src" / "receptionist_robot_bringup" / "config" / "slam_toolbox_params.yaml"
-HOME_POSE_FILE = Path.home() / "home_pose.json"
-LAST_SAVED_MAP_FILE = WS_DIR / "last_saved_map.txt"
+HOME_POSE_FILE = Path("/home/rctrobot/robot_data/home_pose.json")
+LAST_SAVED_MAP_FILE = Path("/home/rctrobot/robot_data/last_saved_map.txt")
 SERVICE_NAME = "robot_bringup.service"
 
 
@@ -375,6 +388,15 @@ class RobotAgentHTTPHandler(http.server.BaseHTTPRequestHandler):
                 "maps": maps,
             })
 
+        # ----------------------------------------------------------------------
+        # c) GET /api/ota/status
+        # ----------------------------------------------------------------------
+        elif path == "/api/ota/status":
+            if HAS_OTA:
+                self._send_json(ota_engine.engine.get_status())
+            else:
+                self._send_json({"success": False, "message": "OTA Engine không khả dụng"}, 500)
+
         else:
             self._send_json({"success": False, "message": f"Endpoint '{path}' not found"}, 404)
 
@@ -596,6 +618,73 @@ class RobotAgentHTTPHandler(http.server.BaseHTTPRequestHandler):
                 self._send_json({"success": True, "message": f"Connected to {ssid}"})
             else:
                 self._send_json({"success": False, "message": err or out or "Failed to connect"}, 500)
+
+        # ----------------------------------------------------------------------
+        # 7. POST /api/ota/check (Check GitHub Releases for updates)
+        # ----------------------------------------------------------------------
+        elif path == "/api/ota/check":
+            if not HAS_OTA:
+                self._send_json({"success": False, "message": "OTA Engine không khả dụng"}, 500)
+                return
+            res = ota_engine.engine.check_for_updates()
+            self._send_json(res, code=200 if res.get("success") else 500)
+
+        # ----------------------------------------------------------------------
+        # 8. POST /api/ota/apply (Trigger full asynchronous OTA update)
+        # ----------------------------------------------------------------------
+        elif path == "/api/ota/apply":
+            if not HAS_OTA:
+                self._send_json({"success": False, "message": "OTA Engine không khả dụng"}, 500)
+                return
+            
+            status = ota_engine.engine.get_status()
+            if status.get("is_busy"):
+                self._send_json({
+                    "success": False,
+                    "message": f"Hệ thống đang bận cập nhật ở tiến trình {status.get('stage')} ({status.get('progress')}%)",
+                }, code=409)
+                return
+
+            download_url = data.get("download_url", "").strip()
+            version = data.get("version", "").strip()
+            sha256 = data.get("sha256", "").strip()
+
+            if not download_url:
+                self._send_json({"success": False, "message": "download_url là bắt buộc"}, 400)
+                return
+
+            # Launch background OTA update thread
+            threading.Thread(
+                target=ota_engine.engine.run_full_update,
+                args=(data,),
+                daemon=True
+            ).start()
+
+            self._send_json({
+                "success": True,
+                "stage": "CHECKING_SAFETY",
+                "progress": 5,
+                "message": f"Đã bắt đầu tiến trình cập nhật lên {version}...",
+            })
+
+        # ----------------------------------------------------------------------
+        # 9. POST /api/ota/rollback (Manual trigger to rollback)
+        # ----------------------------------------------------------------------
+        elif path == "/api/ota/rollback":
+            if not HAS_OTA:
+                self._send_json({"success": False, "message": "OTA Engine không khả dụng"}, 500)
+                return
+
+            status = ota_engine.engine.get_status()
+            if status.get("is_busy"):
+                self._send_json({
+                    "success": False,
+                    "message": "Không thể rollback khi đang trong tiến trình cập nhật!",
+                }, code=409)
+                return
+
+            ok, msg = ota_engine.engine.rollback()
+            self._send_json({"success": ok, "message": msg}, code=200 if ok else 500)
 
         else:
             self._send_json({"success": False, "message": f"Endpoint '{path}' not found"}, 404)
