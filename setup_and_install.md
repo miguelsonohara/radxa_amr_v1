@@ -81,18 +81,35 @@ git clone https://github.com/miguelsonohara/radxa_amr_v1.git
 cd ~/radxa_amr_v1
 ```
 
-### 4.2. Chuẩn bị `micro_ros_msgs` & `micro-ROS-Agent` (Bắt buộc nhánh `jazzy`)
-> **Lưu ý quan trọng:** Nhánh mặc định của `micro-ROS-Agent` trên GitHub là `kilted` (yêu cầu Fast-DDS v3, gây lỗi `Could not find fastdds version 3` trên ROS 2 Jazzy). Luôn đảm bảo cả 2 gói nằm ở nhánh `jazzy`:
+### 4.2. Chuẩn bị các package phụ thuộc trong `src/` (LiDAR, Camera, micro-ROS)
+
+Các package phần cứng gồm **RPLidar (`sllidar_ros2`)**, **HCLiDAR (`hclidar_driver_ros2`)**, **USB Camera (`usb_cam`)**, **`micro-ROS-Agent`** và **`micro_ros_msgs`** được duy trì từ các repository chính thức. Khi clone mới workspace, hãy chạy khối lệnh sau để đảm bảo toàn bộ thư viện được tải đầy đủ và đúng nhánh:
 
 ```bash
 cd ~/radxa_amr_v1
 
-# Clone micro_ros_msgs nhánh jazzy (nếu chưa có)
+# 1. RPLidar Driver (Slamtec sllidar_ros2)
+if [ ! -d "src/sllidar_ros2" ]; then
+  git clone https://github.com/Slamtec/sllidar_ros2.git src/sllidar_ros2
+fi
+
+# 2. HCLiDAR Driver (X2M / Camsense)
+if [ ! -d "src/hclidar_driver_ros2" ]; then
+  git clone -b humble https://github.com/manhbt/hclidar_driver_ros2.git src/hclidar_driver_ros2
+fi
+
+# 3. USB Camera Driver (V4L2)
+if [ ! -d "src/usb_cam" ]; then
+  git clone https://github.com/ros-drivers/usb_cam.git src/usb_cam
+fi
+
+# 4. micro_ros_msgs (Bắt buộc nhánh jazzy)
 if [ ! -d "src/micro_ros_msgs" ]; then
   git clone -b jazzy https://github.com/micro-ROS/micro_ros_msgs.git src/micro_ros_msgs
 fi
 
-# Clone hoặc chuyển micro-ROS-Agent sang nhánh jazzy
+# 5. micro-ROS-Agent (Bắt buộc nhánh jazzy)
+# Lưu ý: Nhánh mặc định của micro-ROS-Agent là kilted (yêu cầu Fast-DDS v3, gây lỗi trên ROS 2 Jazzy).
 if [ ! -d "src/micro-ROS-Agent" ]; then
   git clone -b jazzy https://github.com/micro-ROS/micro-ROS-Agent.git src/micro-ROS-Agent
 else
