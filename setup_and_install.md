@@ -83,34 +83,41 @@ cd ~/radxa_amr_v1
 
 ### 4.2. Chuẩn bị các package phụ thuộc trong `src/` (LiDAR, Camera, micro-ROS)
 
-Các package phần cứng gồm **RPLidar (`sllidar_ros2`)**, **HCLiDAR (`hclidar_driver_ros2`)**, **USB Camera (`usb_cam`)**, **`micro-ROS-Agent`** và **`micro_ros_msgs`** được duy trì từ các repository chính thức. Khi clone mới workspace, hãy chạy khối lệnh sau để đảm bảo toàn bộ thư viện được tải đầy đủ và đúng nhánh:
+Các package phần cứng gồm **RPLidar (`sllidar_ros2`)**, **HCLiDAR (`hclidar_driver_ros2`)**, **USB Camera (`usb_cam`)**, **`micro-ROS-Agent`** và **`micro_ros_msgs`** được duy trì từ các repository chính thức.
+
+> **Lưu ý:** Khi clone repo `radxa_amr_v1` về máy mới, Git có thể tạo sẵn các thư mục rỗng cho các package trên. Vì vậy đoạn lệnh dưới đây sẽ tự động kiểm tra: nếu thư mục chưa có hoặc đang rỗng (chưa có code/`CMakeLists.txt`), script sẽ tự xóa thư mục rỗng và clone code mới về:
 
 ```bash
 cd ~/radxa_amr_v1
 
 # 1. RPLidar Driver (Slamtec sllidar_ros2)
-if [ ! -d "src/sllidar_ros2" ]; then
+if [ ! -f "src/sllidar_ros2/CMakeLists.txt" ]; then
+  rm -rf src/sllidar_ros2
   git clone https://github.com/Slamtec/sllidar_ros2.git src/sllidar_ros2
 fi
 
 # 2. HCLiDAR Driver (X2M / Camsense)
-if [ ! -d "src/hclidar_driver_ros2" ]; then
+if [ ! -f "src/hclidar_driver_ros2/CMakeLists.txt" ]; then
+  rm -rf src/hclidar_driver_ros2
   git clone -b humble https://github.com/manhbt/hclidar_driver_ros2.git src/hclidar_driver_ros2
 fi
 
 # 3. USB Camera Driver (V4L2)
-if [ ! -d "src/usb_cam" ]; then
+if [ ! -f "src/usb_cam/CMakeLists.txt" ]; then
+  rm -rf src/usb_cam
   git clone https://github.com/ros-drivers/usb_cam.git src/usb_cam
 fi
 
 # 4. micro_ros_msgs (Bắt buộc nhánh jazzy)
-if [ ! -d "src/micro_ros_msgs" ]; then
+if [ ! -f "src/micro_ros_msgs/CMakeLists.txt" ]; then
+  rm -rf src/micro_ros_msgs
   git clone -b jazzy https://github.com/micro-ROS/micro_ros_msgs.git src/micro_ros_msgs
 fi
 
 # 5. micro-ROS-Agent (Bắt buộc nhánh jazzy)
 # Lưu ý: Nhánh mặc định của micro-ROS-Agent là kilted (yêu cầu Fast-DDS v3, gây lỗi trên ROS 2 Jazzy).
-if [ ! -d "src/micro-ROS-Agent" ]; then
+if [ ! -f "src/micro-ROS-Agent/CMakeLists.txt" ]; then
+  rm -rf src/micro-ROS-Agent
   git clone -b jazzy https://github.com/micro-ROS/micro-ROS-Agent.git src/micro-ROS-Agent
 else
   git -C src/micro-ROS-Agent checkout jazzy
