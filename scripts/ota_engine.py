@@ -13,6 +13,7 @@ import os
 import sys
 import time
 import json
+import re
 import shutil
 import hashlib
 import urllib.request
@@ -37,7 +38,7 @@ AMR_NEXT_LINK = Path("/home/rctrobot/radxa_amr_next")
 AMR_CURRENT_TARGET = Path("/home/rctrobot/radxa_amr_current")
 
 SERVICE_NAME = "robot_bringup.service"
-GITHUB_REPO = "miguelsonohara/radxa_amr_v1"
+GITHUB_REPO = "miguelsonohara/windy_robot_releases"
 HEALTHCHECK_TIMEOUT_SEC = 45
 
 
@@ -182,7 +183,7 @@ class OTAEngine:
             if sha256_url:
                 try:
                     s_req = urllib.request.Request(sha256_url, headers={"User-Agent": "ReceptionistRobot-OTA/1.0"})
-                    with urllib.request.urlopen(s_req, timeout=5) as s_resp:
+                    with urllib.request.urlopen(s_req, timeout=15) as s_resp:
                         sha_content = s_resp.read().decode("utf-8").strip()
                         # Extract 64-char hex string
                         hex_matches = re.findall(r"[a-fA-F0-9]{64}", sha_content)

@@ -71,9 +71,17 @@ def find_esp32_device(exclude=None):
 
 def find_lidar_device(exclude=None):
     """Dynamically detects LiDAR serial port across sensor swaps (never returns the ESP32 port)."""
+    # 1. Onboard hardware UART (e.g. CON2 header UART_B on BPI-CM4IO)
+    for tty_hw in ['/dev/ttyAML1', '/dev/ttyAML6', '/dev/ttyS1', '/dev/ttyS2']:
+        if _usable(tty_hw, exclude):
+            return tty_hw
+
+    # 2. Persistent udev symlinks
     for symlink in ['/dev/robot_lidar', '/dev/rplidar']:
         if _usable(symlink, exclude):
             return symlink
+
+    # 3. Match by-id wildcards for Silicon Labs CP210x / CH34x / USB UART bridges
     for pat in ['/dev/serial/by-id/usb-Silicon_Labs_*', '/dev/serial/by-id/*CP210*', '/dev/serial/by-id/*RPLIDAR*', '/dev/serial/by-id/*rplidar*']:
         for dev in sorted(glob.glob(pat)):
             if _usable(dev, exclude) and _usb_vid(dev) not in ESP32_VIDS:
@@ -85,7 +93,7 @@ def find_lidar_device(exclude=None):
     for dev in candidates:
         if _usable(dev, exclude) and _usb_vid(dev) not in ESP32_VIDS:
             return dev
-    return '/dev/ttyUSB0'
+    return '/dev/ttyAML1' if os.path.exists('/dev/ttyAML1') else '/dev/ttyUSB0'
 
 
 def _is_usb_capture_cam(dev):
@@ -174,11 +182,11 @@ def generate_launch_description():
         description='Serial port for the LiDAR sensor (auto-detected)'
     )
 
-    # Lidar Baudrate: Speed of communication with LiDAR (460800 for RPLidar C1).
+    # Lidar Baudrate: Speed of communication with LiDAR (115200 for HCLiDAR X2M, 460800 for RPLidar C1).
     declare_lidar_baudrate = DeclareLaunchArgument(
         'lidar_baudrate',
-        default_value='460800',
-        description='Baudrate for RPLidar C1 (460800)'
+        default_value='115200',
+        description='Baudrate for HCLiDAR (115200) or RPLidar (460800)'
     )
 
     declare_scan_mode = DeclareLaunchArgument(
@@ -232,33 +240,36 @@ def generate_launch_description():
         output='screen'
     )
 
-    # B. Lidar Node (sllidar_ros2 configured for RPLidar C1)
+    # B. Lidar Node: HCLiDAR Driver (X2M / X1 / Camsense)
     lidar_node = Node(
-        package='sllidar_ros2',
-        executable='sllidar_node',
-        name='sllidar_node',
+        package='hclidar_driver_ros2',
+        executable='hclidar_driver_ros2_node',
+        name='hclidar_driver_ros2_node',
         parameters=[{
-            'channel_type': 'serial',
-            'serial_port': LaunchConfiguration('lidar_port'),
-            'serial_baudrate': LaunchConfiguration('lidar_baudrate'),
+            'port': LaunchConfiguration('lidar_port'),
+            'baudrate': LaunchConfiguration('lidar_baudrate'),
+            'lidar_model': LaunchConfiguration('lidar_model'),
             'frame_id': 'laser',  # Must match the link name in URDF
-            'inverted': False,    # True to mirror scans if mounted upside down
-            'angle_compensate': True,
-            'scan_mode': LaunchConfiguration('scan_mode'),
-            'range_min': 0.25,   # <--- THÊM DÒNG NÀY: Lidar tự bỏ qua các điểm < 0.25m
-            'range_max': 12.0
+            'range_min': 0.15,
+            'range_max': 25.0
         }],
         output='screen'
     )
+    # B2. Alternative: RPLidar Node (sllidar_ros2)
     # lidar_node = Node(
-    #     package='hclidar_driver_ros2',
-    #     executable='hclidar_driver_ros2_node',
-    #     name='hclidar_driver_ros2_node',
+    #     package='sllidar_ros2',
+    #     executable='sllidar_node',
+    #     name='sllidar_node',
     #     parameters=[{
-    #         'port': LaunchConfiguration('lidar_port'),
-    #         'baudrate': LaunchConfiguration('lidar_baudrate'),
-    #         'lidar_model': LaunchConfiguration('lidar_model'),
-    #         'frame_id': 'laser',  # Must match the link name in URDF
+    #         'channel_type': 'serial',
+    #         'serial_port': LaunchConfiguration('lidar_port'),
+    #         'serial_baudrate': LaunchConfiguration('lidar_baudrate'),
+    #         'frame_id': 'laser',
+    #         'inverted': False,
+    #         'angle_compensate': True,
+    #         'scan_mode': LaunchConfiguration('scan_mode'),
+    #         'range_min': 0.25,
+    #         'range_max': 12.0
     #     }],
     #     output='screen'
     # )

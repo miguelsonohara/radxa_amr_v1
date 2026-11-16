@@ -67,6 +67,11 @@ def find_esp32_device(exclude=None):
 
 def find_lidar_device(exclude=None):
     """Dynamically detects LiDAR serial port across sensor swaps (never returns the ESP32 port)."""
+    # 1. Onboard hardware UART (e.g. CON2 header UART_B on BPI-CM4IO)
+    for tty_hw in ['/dev/ttyAML1', '/dev/ttyAML6', '/dev/ttyS1', '/dev/ttyS2']:
+        if _usable(tty_hw, exclude):
+            return tty_hw
+
     for symlink in ['/dev/robot_lidar', '/dev/rplidar']:
         if _usable(symlink, exclude):
             return symlink
@@ -81,7 +86,7 @@ def find_lidar_device(exclude=None):
     for dev in candidates:
         if _usable(dev, exclude) and _usb_vid(dev) not in ESP32_VIDS:
             return dev
-    return '/dev/ttyUSB0'
+    return '/dev/ttyAML1' if os.path.exists('/dev/ttyAML1') else '/dev/ttyUSB0'
 
 
 def generate_launch_description():
@@ -122,14 +127,9 @@ def generate_launch_description():
 
     declare_lidar_baudrate = DeclareLaunchArgument(
         'lidar_baudrate',
-        default_value='460800',
-        description='Baudrate for RPLidar'
+        default_value='115200',
+        description='Baudrate for HCLiDAR (115200) or RPLidar (460800)'
     )
-    # declare_lidar_baudrate = DeclareLaunchArgument(
-    #     'lidar_baudrate',
-    #     default_value='115200',
-    #     description='Baudrate for HCLiDAR'
-    # )
 
     declare_lidar_model = DeclareLaunchArgument(
         'lidar_model',
@@ -146,30 +146,33 @@ def generate_launch_description():
         output='screen'
     )
 
+    # Lidar Node (hclidar_driver_ros2)
     lidar_node = Node(
-        package='sllidar_ros2',
-        executable='sllidar_node',
-        name='sllidar_node',
+        package='hclidar_driver_ros2',
+        executable='hclidar_driver_ros2_node',
+        name='hclidar_driver_ros2_node',
         parameters=[{
-            'channel_type': 'serial',
-            'serial_port': LaunchConfiguration('lidar_port'),
-            'serial_baudrate': LaunchConfiguration('lidar_baudrate'),
+            'port': LaunchConfiguration('lidar_port'),
+            'baudrate': LaunchConfiguration('lidar_baudrate'),
+            'lidar_model': LaunchConfiguration('lidar_model'),
             'frame_id': 'laser',
-            'inverted': False,
-            'angle_compensate': True
+            'range_min': 0.15,
+            'range_max': 25.0
         }],
         output='screen'
     )
 
     # lidar_node = Node(
-    #     package='hclidar_driver_ros2',
-    #     executable='hclidar_driver_ros2_node',
-    #     name='hclidar_driver_ros2_node',
+    #     package='sllidar_ros2',
+    #     executable='sllidar_node',
+    #     name='sllidar_node',
     #     parameters=[{
-    #         'port': LaunchConfiguration('lidar_port'),
-    #         'baudrate': LaunchConfiguration('lidar_baudrate'),
-    #         'lidar_model': LaunchConfiguration('lidar_model'),
+    #         'channel_type': 'serial',
+    #         'serial_port': LaunchConfiguration('lidar_port'),
+    #         'serial_baudrate': LaunchConfiguration('lidar_baudrate'),
     #         'frame_id': 'laser',
+    #         'inverted': False,
+    #         'angle_compensate': True
     #     }],
     #     output='screen'
     # )

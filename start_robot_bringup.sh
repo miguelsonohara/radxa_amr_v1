@@ -72,23 +72,28 @@ find_esp32_dev() {
 
 find_lidar_dev() {
     local exclude="${1:-}"
-    # 1. Persistent udev symlinks
+    # 1. Onboard hardware UART (e.g. CON2 header UART_B on BPI-CM4IO)
+    for tty_hw in "/dev/ttyAML1" "/dev/ttyAML6" "/dev/ttyS1" "/dev/ttyS2"; do
+        if dev_usable "$tty_hw" "$exclude"; then echo "$tty_hw"; return 0; fi
+    done
+
+    # 2. Persistent udev symlinks
     for symlink in "/dev/robot_lidar" "/dev/rplidar"; do
         if dev_usable "$symlink" "$exclude"; then echo "$symlink"; return 0; fi
     done
-    # 2. Match by-id wildcards for Silicon Labs CP210x (used by RPLidar & HCLiDAR)
+    # 3. Match by-id wildcards for Silicon Labs CP210x (used by RPLidar & HCLiDAR USB dongles)
     for dev in /dev/serial/by-id/usb-Silicon_Labs_* /dev/serial/by-id/*CP210* /dev/serial/by-id/*RPLIDAR* /dev/serial/by-id/*rplidar*; do
         if dev_usable "$dev" "$exclude" && ! vid_in "$(get_udev_vid "$dev")" $ESP32_VIDS; then
             echo "$dev"; return 0
         fi
     done
-    # 3. Any ttyUSB* whose vendor ID is Silicon Labs
+    # 4. Any ttyUSB* whose vendor ID is Silicon Labs
     for dev in /dev/ttyUSB*; do
         if dev_usable "$dev" "$exclude" && vid_in "$(get_udev_vid "$dev")" $LIDAR_VIDS; then
             echo "$dev"; return 0
         fi
     done
-    # 4. Fallback: any ttyUSB* that is NOT an ESP32 bridge (never steal the ESP32 port)
+    # 5. Fallback: any ttyUSB* that is NOT an ESP32 bridge (never steal the ESP32 port)
     for dev in /dev/ttyUSB*; do
         if dev_usable "$dev" "$exclude" && ! vid_in "$(get_udev_vid "$dev")" $ESP32_VIDS; then
             echo "$dev"; return 0

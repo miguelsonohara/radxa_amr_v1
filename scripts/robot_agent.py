@@ -650,8 +650,17 @@ class RobotAgentHTTPHandler(http.server.BaseHTTPRequestHandler):
             sha256 = data.get("sha256", "").strip()
 
             if not download_url:
-                self._send_json({"success": False, "message": "download_url là bắt buộc"}, 400)
-                return
+                chk = ota_engine.engine.check_for_updates()
+                if chk.get("success") and chk.get("download_url"):
+                    download_url = chk["download_url"]
+                    version = version or chk.get("latest_version", "")
+                    sha256 = sha256 or chk.get("sha256", "")
+                    data["download_url"] = download_url
+                    data["version"] = version
+                    data["sha256"] = sha256
+                else:
+                    self._send_json({"success": False, "message": "download_url là bắt buộc và không tìm thấy bản phát hành mới trên máy chủ"}, 400)
+                    return
 
             # Launch background OTA update thread
             threading.Thread(
