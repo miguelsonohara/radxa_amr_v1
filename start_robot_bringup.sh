@@ -72,8 +72,8 @@ find_esp32_dev() {
 
 find_lidar_dev() {
     local exclude="${1:-}"
-    # 1. Onboard hardware UART (e.g. CON2 header UART_B on BPI-CM4IO)
-    for tty_hw in "/dev/ttyAML1" "/dev/ttyAML6" "/dev/ttyS1" "/dev/ttyS2"; do
+    # 1. Onboard hardware UART (e.g. CON2 header UART_B on BPI-CM4IO is /dev/ttyAML7)
+    for tty_hw in "/dev/ttyAML7" "/dev/ttyAML1" "/dev/ttyAML6" "/dev/ttyS1" "/dev/ttyS2"; do
         if dev_usable "$tty_hw" "$exclude"; then echo "$tty_hw"; return 0; fi
     done
 

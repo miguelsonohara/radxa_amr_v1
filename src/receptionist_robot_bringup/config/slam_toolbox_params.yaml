@@ -55,8 +55,8 @@ slam_toolbox:
 
     # SLAM operation mode.
     # Options: mapping (build a map from scratch) or localization (localize in a loaded map).
-    mode: localization
-    map_file_name: /home/rctrobot/radxa_amr_v1/map/demo_map1
+    mode: mapping
+    # map_file_name: /home/rctrobot/radxa_amr_v1/map/demo_map1
 
     # mode: mapping
 

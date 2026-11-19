@@ -34,6 +34,13 @@ except Exception as e:
     print(f"[robot_agent] Warning: ota_engine could not be loaded: {e}")
     HAS_OTA = False
 
+try:
+    from relocalize_manager import RelocalizeManager
+    HAS_RELOCALIZE = True
+except Exception as e:
+    print(f"[robot_agent] Warning: RelocalizeManager could not be loaded: {e}")
+    HAS_RELOCALIZE = False
+
 # ROS 2 imports (graceful fallback if rclpy is not yet sourced)
 try:
     import rclpy
@@ -48,8 +55,29 @@ WS_DIR = Path(__file__).resolve().parent.parent
 MAPS_DIR = Path("/home/rctrobot/robot_data/maps")
 PARAMS_FILE = WS_DIR / "src" / "receptionist_robot_bringup" / "config" / "slam_toolbox_params.yaml"
 HOME_POSE_FILE = Path("/home/rctrobot/robot_data/home_pose.json")
+ANCHORS_FILE = Path("/home/rctrobot/robot_data/anchors.json")
 LAST_SAVED_MAP_FILE = Path("/home/rctrobot/robot_data/last_saved_map.txt")
 SERVICE_NAME = "robot_bringup.service"
+
+
+def get_stored_anchors() -> List[Dict[str, Any]]:
+    if ANCHORS_FILE.exists():
+        try:
+            with open(ANCHORS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
+
+
+def save_stored_anchors(anchors: List[Dict[str, Any]]) -> bool:
+    try:
+        ANCHORS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(ANCHORS_FILE, "w", encoding="utf-8") as f:
+            json.dump(anchors, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception:
+        return False
 
 
 # -----------------------------------------------------------------------------
@@ -322,8 +350,9 @@ class RobotAgentROSNode:
             return False
 
 
-# Global instance of ROS node
+# Global instance of ROS node and Relocalize Manager
 ros_core: Optional[RobotAgentROSNode] = None
+relocalize_mgr: Optional[Any] = None
 
 
 # -----------------------------------------------------------------------------
@@ -397,10 +426,32 @@ class RobotAgentHTTPHandler(http.server.BaseHTTPRequestHandler):
             else:
                 self._send_json({"success": False, "message": "OTA Engine không khả dụng"}, 500)
 
+        # ----------------------------------------------------------------------
+        # d) GET /api/robot/relocalize/status
+        # ----------------------------------------------------------------------
+        elif path == "/api/robot/relocalize/status":
+            if relocalize_mgr:
+                self._send_json(relocalize_mgr.get_status())
+            else:
+                self._send_json({
+                    "state": "idle",
+                    "progress": 0,
+                    "message": "Relocalize Manager chưa sẵn sàng",
+                    "is_running": False
+                })
+
+        # ----------------------------------------------------------------------
+        # e) GET /api/robot/anchors
+        # ----------------------------------------------------------------------
+        elif path == "/api/robot/anchors":
+            anchors = get_stored_anchors()
+            self._send_json({"success": True, "anchors": anchors})
+
         else:
             self._send_json({"success": False, "message": f"Endpoint '{path}' not found"}, 404)
 
     def do_POST(self):
+        global ros_core, relocalize_mgr
         content_len = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(content_len) if content_len > 0 else b"{}"
 
@@ -695,6 +746,58 @@ class RobotAgentHTTPHandler(http.server.BaseHTTPRequestHandler):
             ok, msg = ota_engine.engine.rollback()
             self._send_json({"success": ok, "message": msg}, code=200 if ok else 500)
 
+        # ----------------------------------------------------------------------
+        # 10. POST /api/robot/relocalize (Autonomous 360 Spin / Pose Reset)
+        # ----------------------------------------------------------------------
+        elif path == "/api/robot/relocalize":
+            action = data.get("action", "start").strip().lower()
+
+            # Ensure relocalize_mgr exists
+            if not relocalize_mgr and HAS_RELOCALIZE:
+                if not ros_core:
+                    ros_core = RobotAgentROSNode()
+                if ros_core and ros_core.node:
+                    relocalize_mgr = RelocalizeManager(ros_core.node)
+
+            if not relocalize_mgr:
+                self._send_json({"success": False, "message": "Relocalize Manager không khả dụng (ROS node chưa kết nối)"}, 500)
+                return
+
+            if action == "start":
+                res = relocalize_mgr.start_relocalization()
+                self._send_json(res, code=200 if res.get("success") else 400)
+            elif action == "stop":
+                res = relocalize_mgr.stop_relocalization()
+                self._send_json(res)
+            elif action in ["set_pose", "set_initial_pose"]:
+                pose = data.get("pose")
+                if pose and isinstance(pose, list) and len(pose) >= 3:
+                    ok = relocalize_mgr.set_initial_pose(pose[0], pose[1], pose[2])
+                    self._send_json({
+                        "success": ok,
+                        "pose": pose,
+                        "message": f"Đã phát /set_pose tại ({pose[0]}, {pose[1]}, {pose[2]})",
+                    }, code=200 if ok else 500)
+                else:
+                    self._send_json({"success": False, "message": "pose [x, y, yaw] là bắt buộc"}, 400)
+            else:
+                self._send_json({"success": False, "message": f"Hành động không hợp lệ: {action}"}, 400)
+
+        # ----------------------------------------------------------------------
+        # 11. POST /api/robot/anchors (Save/Update list of known anchor points)
+        # ----------------------------------------------------------------------
+        elif path == "/api/robot/anchors":
+            anchors = data.get("anchors")
+            if isinstance(anchors, list):
+                ok = save_stored_anchors(anchors)
+                self._send_json({
+                    "success": ok,
+                    "anchors": anchors,
+                    "message": "Đã lưu danh sách anchor points thành công",
+                })
+            else:
+                self._send_json({"success": False, "message": "anchors list là bắt buộc"}, 400)
+
         else:
             self._send_json({"success": False, "message": f"Endpoint '{path}' not found"}, 404)
 
@@ -708,8 +811,13 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 
 def main():
-    global ros_core
+    global ros_core, relocalize_mgr
     ros_core = RobotAgentROSNode()
+    if HAS_RELOCALIZE and ros_core and ros_core.node:
+        try:
+            relocalize_mgr = RelocalizeManager(ros_core.node)
+        except Exception as e:
+            print(f"[robot_agent] Warning: Failed to init RelocalizeManager: {e}")
 
     server_address = ("0.0.0.0", PORT)
     print(f"[robot_agent] Starting Robot Core Agent Daemon on http://0.0.0.0:{PORT}...")

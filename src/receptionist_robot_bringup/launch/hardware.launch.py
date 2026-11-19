@@ -67,8 +67,8 @@ def find_esp32_device(exclude=None):
 
 def find_lidar_device(exclude=None):
     """Dynamically detects LiDAR serial port across sensor swaps (never returns the ESP32 port)."""
-    # 1. Onboard hardware UART (e.g. CON2 header UART_B on BPI-CM4IO)
-    for tty_hw in ['/dev/ttyAML1', '/dev/ttyAML6', '/dev/ttyS1', '/dev/ttyS2']:
+    # 1. Onboard hardware UART (e.g. CON2 header UART_B on BPI-CM4IO is /dev/ttyAML7)
+    for tty_hw in ['/dev/ttyAML7', '/dev/ttyAML1', '/dev/ttyAML6', '/dev/ttyS1', '/dev/ttyS2']:
         if _usable(tty_hw, exclude):
             return tty_hw
 
@@ -86,7 +86,7 @@ def find_lidar_device(exclude=None):
     for dev in candidates:
         if _usable(dev, exclude) and _usb_vid(dev) not in ESP32_VIDS:
             return dev
-    return '/dev/ttyAML1' if os.path.exists('/dev/ttyAML1') else '/dev/ttyUSB0'
+    return '/dev/ttyAML7' if os.path.exists('/dev/ttyAML7') else ('/dev/ttyAML1' if os.path.exists('/dev/ttyAML1') else '/dev/ttyUSB0')
 
 
 def generate_launch_description():
@@ -133,8 +133,8 @@ def generate_launch_description():
 
     declare_lidar_model = DeclareLaunchArgument(
         'lidar_model',
-        default_value='X2M',
-        description='Model of the HCLiDAR sensor (e.g. X1, X2M)'
+        default_value='X2E',
+        description='Model of the HCLiDAR sensor (X2E for 3kHz Camsense X2/X2M, or X1/X2M)'
     )
 
     # 3. Node Declarations
@@ -156,8 +156,8 @@ def generate_launch_description():
             'baudrate': LaunchConfiguration('lidar_baudrate'),
             'lidar_model': LaunchConfiguration('lidar_model'),
             'frame_id': 'laser',
-            'range_min': 0.15,
-            'range_max': 25.0
+            'range_min': 0.12,
+            'range_max': 8.0
         }],
         output='screen'
     )

@@ -95,20 +95,27 @@ Contains physical modeling and visualization components:
 * **`rviz/receptionist_robot.rviz`:** Preconfigured RViz visualization profile.
 
 ### 📂 `hclidar_driver_ros2` & `sllidar_ros2`
-LiDAR sensor drivers configured to publish on `/scan` relative to the `laser` coordinate frame.
+LiDAR sensor drivers configured to publish on `/scan` relative to the `laser` coordinate frame:
+* **HCLiDAR / Camsense X2M:** Wired to CON2 header Pin 10 (`UART_B_RX`) on `/dev/ttyAML7` (115200 baud). Tuned to 3kHz (`FPS_3000` / `SPEED_360`) to prevent frame drop error `-3001` / `-3003`.
+* **RPLidar C1 / A1 / A2 (`sllidar_ros2`):** Supported as an alternative via USB serial (`/dev/ttyUSB0` or `/dev/robot_lidar`).
 
 ### 📂 `yolov11_pose_detector` & `usb_cam`
 * **`usb_cam`:** V4L2 video capture node publishing to `/image_raw`.
 * **`yolov11_pose_detector`:** Deep learning person & pose detection utilizing ONNX Runtime (`yolo11n-pose.onnx`). Throttled to ~3 FPS with 2 ONNX threads on CPU to conserve CPU cores for Nav2 and Web Kiosk.
 
-### 📂 `scripts/robot_agent.py` (Local REST Control Daemon - Port 5001)
-Lightweight HTTP daemon listening on `127.0.0.1:5001`:
-* `/api/robot/status`: Returns system mode, home pose, current map, and service status.
-* `/api/robot/maps`: Scans `map/` directory and returns saved map metadata.
-* `/api/robot/mode`: Switches between SLAM `mapping` and Nav2 `localization`, restarting `robot_bringup.service`.
-* `/api/robot/save-map`: Calls SLAM Toolbox serialization and Nav2 map saver to save both `.posegraph` and `.yaml` formats.
-* `/api/robot/home`: Records new Home position or commands Nav2 to return to Home.
-* `/api/robot/bringup`: Controls `robot_bringup.service` (`start`, `stop`, `restart`).
+### 📂 `scripts/` (Daemons, Utilities & Relocalization)
+* **`scripts/robot_agent.py`:** Lightweight HTTP daemon listening on `127.0.0.1:5001`:
+  * `/api/robot/status`: Returns system mode, home pose, current map, and service status.
+  * `/api/robot/maps`: Scans `map/` directory and returns saved map metadata.
+  * `/api/robot/mode`: Switches between SLAM `mapping` and Nav2 `localization`, restarting `robot_bringup.service`.
+  * `/api/robot/save-map`: Calls SLAM Toolbox serialization and Nav2 map saver to save both `.posegraph` and `.yaml` formats.
+  * `/api/robot/home`: Records new Home position or commands Nav2 to return to Home.
+  * `/api/robot/bringup`: Controls `robot_bringup.service` (`start`, `stop`, `restart`).
+  * `/api/robot/relocalize`: Starts/stops autonomous 360° spin relocalization or sets 1-tap anchor pose.
+  * `/api/robot/relocalize/status`: Returns live progress and state of relocalization.
+  * `/api/robot/anchors`: Gets or sets list of known 1-tap anchor positions.
+* **`scripts/relocalize_manager.py`:** Manages 360° rotation at 0.35 rad/s on `/cmd_vel` to let LiDAR recover localization when the robot is kidnapped or moved.
+* **`scripts/install_uart_overlay.sh`:** Compiles and installs `meson-uartB.dtbo` mapping hardware UART_B to `/dev/ttyAML7`.
 
 ---
 
