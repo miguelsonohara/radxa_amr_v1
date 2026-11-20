@@ -72,9 +72,8 @@ slam_toolbox:
     use_scan_matching: true
 
     # Use the center of gravity of the scan points instead of the sensor origin
-    # to compute transforms. MUST be false for 360 LiDAR mounted on robot base,
-    # otherwise scan center shifts as walls go in/out of view, causing blurred/scattered point clouds.
-    use_scan_barycenter: false
+    # to compute transforms. Improves stability when laser is offset.
+    use_scan_barycenter: true
 
     # Minimum distance (meters) the robot must move before processing a new scan.
     # Set to 0.15m to avoid redundant node insertion when stationary/fine-maneuvering, preventing map smearing.
@@ -97,9 +96,8 @@ slam_toolbox:
     scan_buffer_maximum_scan_distance: 10.0
 
     # Minimum match response value for fine scan matching.
-    # Tuning: Higher values (e.g. 0.2) force strict matches (less map distortion but may fail
-    # in featureless halls); lower values allow weaker matches (e.g. 0.05).
-    link_match_minimum_response_fine: 0.2
+    # Standard: 0.1. (0.2 causes links to be dropped in open areas, yanking robot backward).
+    link_match_minimum_response_fine: 0.1
 
     # Maximum distance (meters) to search for scan matching links.
     # Tuning: Set to maximum expected distance between sequential scans.
@@ -142,8 +140,7 @@ slam_toolbox:
 
     # Standard deviation (meters) to smear/smooth scan matching cost values.
     # Tuning: Prevents local minima traps by smoothing the search space.
-    # Set to 0.03m (3cm) for sharp laser-to-wall matching. 0.1m causes blurred/cloudy walls.
-    correlation_search_space_smear_deviation: 0.03
+    correlation_search_space_smear_deviation: 0.1
 
     # Size of the loop closure search window (meters).
     # Tuning: Larger values search a wider area when the robot returns to an old position,
@@ -161,18 +158,18 @@ slam_toolbox:
     # ==========================================================================
 
     # Penalty weight applied to translation updates that deviate from odometry.
-    # Lower value (0.1) allows LiDAR scan matching to correct wheel slip.
-    distance_variance_penalty: 0.1
+    # Standard: 0.5. Prevents scan matching from jumping around.
+    distance_variance_penalty: 0.5
 
     # Penalty weight applied to rotation updates that deviate from odometry.
-    # Lower value (0.1) prevents map distortion during in-place spin turns.
-    angle_variance_penalty: 0.1
+    # Standard: 1.0. Heavily penalizes angular tilt so scans do not wobble and smear walls.
+    angle_variance_penalty: 1.0
 
     # Angular search range offset (radians) for fine matching.
     fine_search_angle_offset: 0.00349
 
-    # Angular search range offset (radians) for coarse matching.
-    coarse_search_angle_offset: 0.698
+    # Angular search range offset (radians) for coarse matching (~20 deg standard).
+    coarse_search_angle_offset: 0.349
 
     # Angular resolution (radians) for coarse matching grid.
     coarse_angle_resolution: 0.0349
@@ -235,7 +232,7 @@ slam_toolbox:
     # Enables interactive mode in RViz, allowing users to move map nodes manually.
     enable_interactive_mode: true
 
-    # Minimum hit probability threshold to mark a cell as occupied.
-    # Set to 0.65 (65%) so only confident wall surfaces become black occupied cells.
-    # Lower values like 0.1 cause grazing rays to paint wide clouds of black pixels.
-    occupancy_threshold: 0.65
+    # Minimum hit-to-pass ratio threshold to mark a cell as occupied.
+    # In SLAM Toolbox this is (hits / pass-throughs), NOT probability percentage.
+    # Standard: 0.1 (10%). Setting to 0.65 breaks map generation completely (0 black points).
+    occupancy_threshold: 0.1

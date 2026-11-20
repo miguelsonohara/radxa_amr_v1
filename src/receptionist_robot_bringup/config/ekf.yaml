@@ -10,6 +10,10 @@ ekf_filter_node:
     base_link_frame: base_link
     world_frame: odom
 
+    # Disable lagged history smoothing to prevent CPU hang (Took 1.025s) when sensor stamps fluctuate
+    smooth_lagged_data: false
+    history_length: 0.0
+
     # --------------------------------------------------------------------------
     # 1. Raw Wheel Odometry from ESP32 (/odom)
     # --------------------------------------------------------------------------
@@ -21,6 +25,7 @@ ekf_filter_node:
                    false, false, false]   # ax, ay, az acceleration
     odom0_differential: false
     odom0_queue_size: 10
+    odom0_nodelay: true
 
     # --------------------------------------------------------------------------
     # 2. BNO055 IMU Data from ESP32 (/imu)
@@ -34,4 +39,5 @@ ekf_filter_node:
     imu0_differential: false
     imu0_relative: true
     imu0_queue_size: 10
-    imu0_remove_gravitational_acceleration: true
+    imu0_nodelay: true
+    imu0_remove_gravitational_acceleration: false
