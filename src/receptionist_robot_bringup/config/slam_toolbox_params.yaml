@@ -72,8 +72,9 @@ slam_toolbox:
     use_scan_matching: true
 
     # Use the center of gravity of the scan points instead of the sensor origin
-    # to compute transforms. Improves stability when laser is offset.
-    use_scan_barycenter: true
+    # to compute transforms. MUST be false for 360 LiDAR mounted on robot base,
+    # otherwise scan center shifts as walls go in/out of view, causing blurred/scattered point clouds.
+    use_scan_barycenter: false
 
     # Minimum distance (meters) the robot must move before processing a new scan.
     # Set to 0.15m to avoid redundant node insertion when stationary/fine-maneuvering, preventing map smearing.
@@ -98,7 +99,7 @@ slam_toolbox:
     # Minimum match response value for fine scan matching.
     # Tuning: Higher values (e.g. 0.2) force strict matches (less map distortion but may fail
     # in featureless halls); lower values allow weaker matches (e.g. 0.05).
-    link_match_minimum_response_fine: 0.1
+    link_match_minimum_response_fine: 0.2
 
     # Maximum distance (meters) to search for scan matching links.
     # Tuning: Set to maximum expected distance between sequential scans.
@@ -141,7 +142,8 @@ slam_toolbox:
 
     # Standard deviation (meters) to smear/smooth scan matching cost values.
     # Tuning: Prevents local minima traps by smoothing the search space.
-    correlation_search_space_smear_deviation: 0.1
+    # Set to 0.03m (3cm) for sharp laser-to-wall matching. 0.1m causes blurred/cloudy walls.
+    correlation_search_space_smear_deviation: 0.03
 
     # Size of the loop closure search window (meters).
     # Tuning: Larger values search a wider area when the robot returns to an old position,
@@ -234,4 +236,6 @@ slam_toolbox:
     enable_interactive_mode: true
 
     # Minimum hit probability threshold to mark a cell as occupied.
-    occupancy_threshold: 0.1
+    # Set to 0.65 (65%) so only confident wall surfaces become black occupied cells.
+    # Lower values like 0.1 cause grazing rays to paint wide clouds of black pixels.
+    occupancy_threshold: 0.65
