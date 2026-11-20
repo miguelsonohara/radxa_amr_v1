@@ -76,12 +76,11 @@ slam_toolbox:
     use_scan_barycenter: true
 
     # Minimum distance (meters) the robot must move before processing a new scan.
-    # Tuning: Set to 0.01 in localization mode so SLAM continuously corrects IMU/odom drift even when standing still.
-    minimum_travel_distance: 0.01
+    # Set to 0.15m to avoid redundant node insertion when stationary/fine-maneuvering, preventing map smearing.
+    minimum_travel_distance: 0.15
 
-    # Minimum heading change (radians) the robot must rotate before processing a new scan.
-    # Tuning: Set to 0.01 so stationary angular drift is immediately compensated by LiDAR scan matching.
-    minimum_travel_heading: 0.01
+    # Minimum heading change (radians) the robot must rotate before processing a new scan (~8.6 deg).
+    minimum_travel_heading: 0.15
 
     # If true, both distance AND heading threshold must be met to process a scan.
     # If false, either threshold being met triggers a scan update (default, safer).
@@ -134,7 +133,7 @@ slam_toolbox:
 
     # Size of the search window (meters) for finding correlation matches.
     # Tuning: Larger values handle high linear speeds and poor odometry but increase CPU usage.
-    correlation_search_space_dimension: 0.8
+    correlation_search_space_dimension: 0.6
 
     # Resolution (meters per cell) of the search grid.
     # Tuning: Smaller values (e.g., 0.01) increase accuracy; larger values speed up matching.
@@ -147,7 +146,7 @@ slam_toolbox:
     # Size of the loop closure search window (meters).
     # Tuning: Larger values search a wider area when the robot returns to an old position,
     # helping recover from significant odometry drift, but increases CPU usage.
-    loop_search_space_dimension: 8.0
+    loop_search_space_dimension: 6.0
 
     # Resolution (meters per cell) of the loop closure search grid.
     loop_search_space_resolution: 0.05
@@ -160,12 +159,12 @@ slam_toolbox:
     # ==========================================================================
 
     # Penalty weight applied to translation updates that deviate from odometry.
-    # Tuning: Increase (e.g., 0.8) to trust your ESP32 odometry more; decrease to trust LiDAR matches more.
-    distance_variance_penalty: 0.3
+    # Lower value (0.1) allows LiDAR scan matching to correct wheel slip.
+    distance_variance_penalty: 0.1
 
     # Penalty weight applied to rotation updates that deviate from odometry.
-    # Tuning: Increase if your robot rotates smoothly and you want to prevent LiDAR sliding on walls.
-    angle_variance_penalty: 0.3
+    # Lower value (0.1) prevents map distortion during in-place spin turns.
+    angle_variance_penalty: 0.1
 
     # Angular search range offset (radians) for fine matching.
     fine_search_angle_offset: 0.00349
@@ -215,8 +214,8 @@ slam_toolbox:
     # Note: slam_toolbox doesn't have a min_laser_range parameter. It reads range_min directly from the /scan topic header.
 
     # Maximum range (meters) of lidar points to use for drawing the map.
-    # Tuning: Reduce (e.g. 12.0) to ignore noisy long-range readings from the RPLidar.
-    max_laser_range: 12.0
+    # Tuned to 8.0m to match the exact maximum reliable range of HCLiDAR / Camsense X2M.
+    max_laser_range: 8.0
 
     # Minimum time (seconds) between processing successive scan updates.
     minimum_time_interval: 0.1
