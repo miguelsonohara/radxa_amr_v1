@@ -140,7 +140,7 @@ local_costmap:
       width: 5
       height: 5
       resolution: 0.05
-      robot_radius: 0.25
+      robot_radius: 0.35
 
       # Layers loaded into the local costmap (removed keepout_filter to prevent false lethal cost aborts).
       plugins: ["obstacle_layer", "inflation_layer"]
@@ -167,7 +167,7 @@ local_costmap:
           raytrace_max_range: 3.5
           raytrace_min_range: 0.0
           obstacle_max_range: 2.5
-          obstacle_min_range: 0.25
+          obstacle_min_range: 0.36
 
       always_send_full_costmap: True
 
@@ -183,7 +183,7 @@ global_costmap:
       global_frame: map
       robot_base_frame: base_link
       transform_tolerance: 0.5
-      robot_radius: 0.25
+      robot_radius: 0.35
       resolution: 0.05
       track_unknown_space: true
 
@@ -209,7 +209,7 @@ global_costmap:
           raytrace_max_range: 3.5
           raytrace_min_range: 0.0
           obstacle_max_range: 2.5
-          obstacle_min_range: 0.25
+          obstacle_min_range: 0.36
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"

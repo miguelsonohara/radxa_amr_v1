@@ -201,6 +201,12 @@ def generate_launch_description():
         description='Model of the HCLiDAR sensor (X2E for 3kHz Camsense X2/X2M, or X1/X2M)'
     )
 
+    declare_lidar_range_min = DeclareLaunchArgument(
+        'lidar_range_min',
+        default_value='0.36',
+        description='Minimum range (m) for LiDAR to ignore chassis self-reflections inside robot_radius'
+    )
+
     declare_camera_device = DeclareLaunchArgument(
         'camera_device',
         default_value=default_cam_port,
@@ -250,7 +256,7 @@ def generate_launch_description():
             'baudrate': LaunchConfiguration('lidar_baudrate'),
             'lidar_model': LaunchConfiguration('lidar_model'),
             'frame_id': 'laser',  # Must match the link name in URDF
-            'range_min': 0.12,
+            'range_min': LaunchConfiguration('lidar_range_min'),
             'range_max': 8.0
         }],
         output='screen'
@@ -420,6 +426,7 @@ def generate_launch_description():
     ld.add_action(declare_lidar_baudrate)
     ld.add_action(declare_scan_mode)
     ld.add_action(declare_lidar_model)
+    ld.add_action(declare_lidar_range_min)
     ld.add_action(declare_camera_device)
     ld.add_action(declare_enable_camera)
     ld.add_action(declare_enable_keepout)
