@@ -1,5 +1,9 @@
 # Receptionist Robot Workspace Overview (GEMINI.md)
 
+> [!IMPORTANT]
+> **QUY TẮC BẮT BUỘC (CRITICAL MANDATORY RULE):**
+> Trước khi thực hiện bất kỳ thay đổi code, sửa đổi file cấu hình, cài đặt gói hoặc can thiệp hệ thống, AI BẮT BUỘC PHẢI liệt kê danh sách chi tiết các công việc sắp làm (kèm lý do và phạm vi ảnh hưởng) để NGƯỜI DÙNG XÁC NHẬN trước, chỉ được phép tiến hành sau khi người dùng đồng ý.
+
 Welcome to the **Receptionist Robot** project workspace. This workspace contains the ROS 2 Jazzy host packages (running on the Single-Board **Banana Pi BPI-CM4-IO / bananapicm4io**) and is integrated with low-level ESP32-S3 motor control firmware.
 
 ---
@@ -144,7 +148,7 @@ Installation command:
   * Uses **LEDC** at **2kHz** with **8-bit** duty cycle resolution (`0-255`).
   * Left motor pins: ENA `4`, IN1 `5`, IN2 `6`. Right motor pins: ENB `8`, IN3 `10`, IN4 `9`.
   * Left encoders: `7` & `15`. Right encoders: `11` & `16`.
-  * Physical parameters: Wheel diameter = `65mm`, Wheel base = `300mm`, PPR = `325.0f`.
+  * Physical parameters: Wheel diameter = `80mm` (`0.080m`), Wheel base = `300mm` (chassis: `395mm`), PPR = `325.0f`.
 * **Kinematics & Control:**
   * Dual independent wheel PID loops ($K_P=100.0f$, $K_I=80.0f$, $K_D=1.2f$) with feedforward control.
   * Static deadband compensation (`90/255` PWM offset) to overcome gearbox/motor starting resistance.

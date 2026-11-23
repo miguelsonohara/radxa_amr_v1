@@ -304,15 +304,6 @@ def generate_launch_description():
         remappings=[('/odometry/filtered', '/odom/filtered')]
     )
 
-    # D2. Odometry Scale Corrector Node
-    # Scales ESP32 65mm odometry to match physical 80mm wheels (80/65 = 1.230769)
-    odom_corrector_script = os.path.join(os.path.expanduser('~/radxa_amr_v1'), 'scripts', 'odom_scale_corrector.py')
-    odom_scale_corrector_node = Node(
-        executable=odom_corrector_script,
-        name='odom_scale_corrector',
-        output='screen'
-    )
-
     # G. USB Camera Node (Auto-skipped when enable_camera:=false)
     usb_cam_node = Node(
         package='usb_cam',
@@ -443,7 +434,6 @@ def generate_launch_description():
     
     # Add Core Driver & Hardware Nodes Immediately
     ld.add_action(micro_ros_agent_node)
-    ld.add_action(odom_scale_corrector_node)
     ld.add_action(lidar_node)
     ld.add_action(robot_state_publisher_node)
     ld.add_action(robot_localization_node)
