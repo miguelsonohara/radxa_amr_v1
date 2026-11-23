@@ -133,7 +133,7 @@ slam_toolbox:
 
     # Size of the search window (meters) for finding correlation matches.
     # Tuning: Larger values handle high linear speeds and poor odometry but increase CPU usage.
-    correlation_search_space_dimension: 0.8
+    correlation_search_space_dimension: 1.0
 
     # Resolution (meters per cell) of the search grid.
     # Tuning: Smaller values (e.g., 0.01) increase accuracy; larger values speed up matching.
@@ -159,12 +159,12 @@ slam_toolbox:
     # ==========================================================================
 
     # Penalty weight applied to translation updates that deviate from odometry.
-    # Lower value (0.25) allows LiDAR scan matching to snap onto walls rather than creating duplicate wall layers.
-    distance_variance_penalty: 0.25
+    # Lower value (0.10) allows LiDAR scan matching to snap onto walls even when wheels slip on the floor.
+    distance_variance_penalty: 0.10
 
     # Penalty weight applied to rotation updates that deviate from odometry.
-    # Standard: 1.0. Heavily penalizes angular tilt so scans do not wobble and smear walls.
-    angle_variance_penalty: 1.0
+    # Lower value (0.25) allows LiDAR scan matching to correct heading even when wheels spin/slip during turns.
+    angle_variance_penalty: 0.25
 
     # Angular search range offset (radians) for fine matching.
     fine_search_angle_offset: 0.00349
@@ -176,10 +176,10 @@ slam_toolbox:
     coarse_angle_resolution: 0.0349
 
     # Minimum score penalty for orientation deviations.
-    minimum_angle_penalty: 0.9
+    minimum_angle_penalty: 0.25
 
     # Minimum score penalty for translation deviations.
-    minimum_distance_penalty: 0.25
+    minimum_distance_penalty: 0.10
 
     # Expand search windows if matching scores are low.
     use_response_expansion: true
