@@ -72,8 +72,9 @@ slam_toolbox:
     use_scan_matching: true
 
     # Use the center of gravity of the scan points instead of the sensor origin
-    # to compute transforms. Improves stability when laser is offset.
-    use_scan_barycenter: true
+    # to compute transforms. Set false for fixed rigid planar lidar to avoid
+    # scan center drift when approaching walls.
+    use_scan_barycenter: false
 
     # Minimum distance (meters) the robot must move before processing a new scan.
     # Set to 0.15m to avoid redundant node insertion when stationary/fine-maneuvering, preventing map smearing.
@@ -132,7 +133,7 @@ slam_toolbox:
 
     # Size of the search window (meters) for finding correlation matches.
     # Tuning: Larger values handle high linear speeds and poor odometry but increase CPU usage.
-    correlation_search_space_dimension: 0.6
+    correlation_search_space_dimension: 0.8
 
     # Resolution (meters per cell) of the search grid.
     # Tuning: Smaller values (e.g., 0.01) increase accuracy; larger values speed up matching.
@@ -158,8 +159,8 @@ slam_toolbox:
     # ==========================================================================
 
     # Penalty weight applied to translation updates that deviate from odometry.
-    # Standard: 0.5. Prevents scan matching from jumping around.
-    distance_variance_penalty: 0.5
+    # Lower value (0.25) allows LiDAR scan matching to snap onto walls rather than creating duplicate wall layers.
+    distance_variance_penalty: 0.25
 
     # Penalty weight applied to rotation updates that deviate from odometry.
     # Standard: 1.0. Heavily penalizes angular tilt so scans do not wobble and smear walls.
@@ -178,7 +179,7 @@ slam_toolbox:
     minimum_angle_penalty: 0.9
 
     # Minimum score penalty for translation deviations.
-    minimum_distance_penalty: 0.5
+    minimum_distance_penalty: 0.25
 
     # Expand search windows if matching scores are low.
     use_response_expansion: true

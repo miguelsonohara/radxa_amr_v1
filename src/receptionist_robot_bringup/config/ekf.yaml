@@ -15,9 +15,10 @@ ekf_filter_node:
     history_length: 0.0
 
     # --------------------------------------------------------------------------
-    # 1. Raw Wheel Odometry from ESP32 (/odom)
+    # 1. Scaled Wheel Odometry (/odom_corrected from odom_scale_corrector)
+    # Scales ESP32 65mm firmware calculation to match physical 80mm wheels (x1.2308)
     # --------------------------------------------------------------------------
-    odom0: /odom
+    odom0: /odom_corrected
     odom0_config: [true,  true,  false,   # x, y, z position (Fusing cumulative encoder position prevents velocity-integration truncation loss)
                    false, false, false,   # roll, pitch, yaw orientation (Handled by BNO055 relative yaw)
                    true,  false, false,   # vx (true), vy (false - non-holonomic), vz (false)
