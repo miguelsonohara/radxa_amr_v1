@@ -304,16 +304,27 @@ def generate_launch_description():
         remappings=[('/odometry/filtered', '/odom/filtered')]
     )
 
+    # D2. Curved Dock Detector Node (32cm rear arc perception via HCLiDAR /scan)
+    arc_dock_detector_node = Node(
+        package='arc_dock_detector',
+        executable='arc_dock_detector_node',
+        name='arc_dock_detector',
+        output='screen'
+    )
+
     # G. USB Camera Node (Auto-skipped when enable_camera:=false)
     usb_cam_node = Node(
         package='usb_cam',
         executable='usb_cam_node_exe',
         name='usb_cam',
+        respawn=True,
+        respawn_delay=2.0,
         condition=IfCondition(LaunchConfiguration('enable_camera')),
         parameters=[{
             'video_device': LaunchConfiguration('camera_device'),
             'image_width': 640,
             'image_height': 480,
+            'framerate': 10.0,
             'pixel_format': 'raw_mjpeg',
             'io_method': 'mmap'
         }],
@@ -400,15 +411,23 @@ def generate_launch_description():
         }.items()
     )
 
-    # F. Nav2 Stack
-    # Launches controller, planner, behavior server, smoother, collision monitor, 
-    # and waypoint follower. It excludes localization (AMCL) since SLAM is active.
-    # Uses our custom parameter file.
+    # F. Nav2 Stack (Composed inside a single isolated container for ARM zero-copy IPC)
+    nav2_container_node = Node(
+        name='nav2_container',
+        package='rclcpp_components',
+        executable='component_container_isolated',
+        parameters=[nav2_params_path, {'autostart': True}],
+        remappings=[('/tf', 'tf'), ('/tf_static', 'tf_static')],
+        output='screen',
+    )
+
     nav2_navigation_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(nav2_launch_path),
         launch_arguments={
             'params_file': nav2_params_path,
             'use_sim_time': LaunchConfiguration('use_sim_time'),
+            'use_composition': 'True',
+            'container_name': 'nav2_container',
             'autostart': 'true'
         }.items()
     )
@@ -437,6 +456,7 @@ def generate_launch_description():
     ld.add_action(lidar_node)
     ld.add_action(robot_state_publisher_node)
     ld.add_action(robot_localization_node)
+    ld.add_action(arc_dock_detector_node)
     ld.add_action(usb_cam_node)
     ld.add_action(filter_mask_server_node)
     ld.add_action(costmap_filter_info_server_node)
@@ -449,6 +469,7 @@ def generate_launch_description():
         period=4.0,
         actions=[
             yolo_pose_node,
+            nav2_container_node,
             nav2_navigation_launch
         ]
     )

@@ -9,9 +9,18 @@ Refactored for ROS 2 Jazzy:
 """
 
 import os
+
+# Prevent OpenMP/OpenBLAS/OpenCV thread contention on ARM SBC
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+os.environ.setdefault("VECLIB_MAXIMUM_THREADS", "1")
+os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
+
 import time
 from collections import deque
 import cv2
+cv2.setNumThreads(1)
 import numpy as np
 import rclpy
 from rclpy.node import Node
@@ -36,6 +45,13 @@ try:
 except ImportError:
     YOLO = None
     HAS_ULTRALYTICS = False
+
+try:
+    import ncnn
+    HAS_NCNN = True
+except ImportError:
+    ncnn = None
+    HAS_NCNN = False
 
 try:
     import onnxruntime as ort
@@ -86,8 +102,8 @@ class YoloV11PoseDetectorNode(Node):
         self.declare_parameter('nms_threshold', 0.45)
         self.declare_parameter('kp_conf_threshold', 0.4)
         self.declare_parameter('onnx_input_size', 320)
-        self.declare_parameter('onnx_threads', 2)
-        self.declare_parameter('target_fps', 3.0)
+        self.declare_parameter('onnx_threads', 4)
+        self.declare_parameter('target_fps', 5.0)
         
         self.declare_parameter('focal_length_x', 550.0)
         self.declare_parameter('focal_length_y', 550.0)
@@ -171,6 +187,8 @@ class YoloV11PoseDetectorNode(Node):
         # ----------------------------------------------------------------------
         # 3. Model Initialization
         # ----------------------------------------------------------------------
+        self.use_ncnn = False
+        self.ncnn_net = None
         self.use_onnx = False
         self.session = None
         self.model = None
@@ -180,8 +198,13 @@ class YoloV11PoseDetectorNode(Node):
         # 4. ROS Subscriptions, Publishers & Action Client
         # ----------------------------------------------------------------------
         self.bridge = CvBridge()
-        self.publisher = self.create_publisher(Image, output_topic, 10)
-        self.subscription = self.create_subscription(Image, input_topic, self.image_callback, qos_profile_sensor_data)
+        cam_qos = QoSProfile(
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=1,
+            reliability=QoSReliabilityPolicy.BEST_EFFORT
+        )
+        self.publisher = self.create_publisher(Image, output_topic, cam_qos)
+        self.subscription = self.create_subscription(Image, input_topic, self.image_callback, cam_qos)
         
         status_qos = QoSProfile(
             history=QoSHistoryPolicy.KEEP_LAST,
@@ -233,7 +256,36 @@ class YoloV11PoseDetectorNode(Node):
     # Initialization & Status Helpers
     # ==========================================================================
     def _init_yolo_model(self):
-        """Loads ONNX Runtime session or falls back to PyTorch YOLO."""
+        """Loads NCNN (fastest on ARM CPU), ONNX Runtime fallback, or PyTorch YOLO."""
+        base_stem = self.model_name.replace('.onnx', '').replace('.pt', '')
+        ncnn_candidates = [
+            (
+                os.path.join(self.workspace_dir, f"{base_stem}.ncnn.param"),
+                os.path.join(self.workspace_dir, f"{base_stem}.ncnn.bin"),
+            ),
+            (
+                os.path.join(self.workspace_dir, f"{base_stem.replace('-', '_')}.ncnn.param"),
+                os.path.join(self.workspace_dir, f"{base_stem.replace('-', '_')}.ncnn.bin"),
+            ),
+        ]
+
+        if HAS_NCNN:
+            for param_path, bin_path in ncnn_candidates:
+                if os.path.exists(param_path) and os.path.exists(bin_path):
+                    self.get_logger().info(f"Loading ARM-accelerated NCNN model: {param_path} ({self.onnx_threads} threads)")
+                    net = ncnn.Net()
+                    net.opt.use_vulkan_compute = False
+                    net.opt.num_threads = int(self.onnx_threads)
+                    net.opt.use_fp16_packed = True
+                    net.opt.use_fp16_storage = True
+                    net.opt.use_fp16_arithmetic = True
+                    if net.load_param(param_path) == 0 and net.load_model(bin_path) == 0:
+                        self.ncnn_net = net
+                        self.use_ncnn = True
+                        self.get_logger().info("NCNN session initialized successfully!")
+                        return
+                    self.get_logger().warn("Failed to load NCNN model files; falling back to ONNX Runtime.")
+
         onnx_model_name = self.model_name if self.model_name.endswith('.onnx') else self.model_name.replace('.pt', '.onnx')
         onnx_model_path = os.path.join(self.workspace_dir, onnx_model_name)
         
@@ -250,8 +302,8 @@ class YoloV11PoseDetectorNode(Node):
             if os.path.exists(onnx_model_path):
                 self.get_logger().info(f"Loading accelerated ONNX model: {onnx_model_path}")
                 opts = ort.SessionOptions()
-                opts.intra_op_num_threads = self.onnx_threads
-                opts.inter_op_num_threads = self.onnx_threads
+                opts.intra_op_num_threads = int(self.onnx_threads)
+                opts.inter_op_num_threads = 1
                 opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
                 opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
                 
@@ -485,14 +537,17 @@ class YoloV11PoseDetectorNode(Node):
             self.get_logger().error(f"Image conversion failed: {e}")
             return
             
-        annotated_img = cv_img.copy()
+        has_debug_subs = self.publisher.get_subscription_count() > 0
+        annotated_img = cv_img.copy() if has_debug_subs else None
         orig_h, orig_w = cv_img.shape[:2]
         
         self.gesture_active = False
         target_goal_pose = None
 
-        # 1. Perform Inference
-        if self.use_onnx:
+        # 1. Perform Inference (NCNN -> ONNX -> PyTorch)
+        if self.use_ncnn:
+            detections = self._run_ncnn_inference(cv_img, orig_w, orig_h)
+        elif self.use_onnx:
             detections = self._run_onnx_inference(cv_img, orig_w, orig_h)
         else:
             detections = self._run_pytorch_inference(cv_img)
@@ -511,13 +566,14 @@ class YoloV11PoseDetectorNode(Node):
             # Process tracking for the selected target person
             target_goal_pose = self._process_person_tracking(target_det['kpts'], target_det['kpts_conf'])
 
-            # Render Visualizations for all detected persons
-            for idx, det in enumerate(detections):
-                is_selected_waving = (idx == target_idx) and raw_waving
-                box_color = COLOR_EMERALD if is_selected_waving else COLOR_AMBER
-                label_prefix = "Target (Waving)" if is_selected_waving else "Person"
-                self._draw_detection_box(annotated_img, det['box'], det['score'], color=box_color, label_prefix=label_prefix)
-                self._draw_skeleton(annotated_img, det['kpts'], det['kpts_conf'])
+            # Render Visualizations only when debug_image has subscribers
+            if has_debug_subs:
+                for idx, det in enumerate(detections):
+                    is_selected_waving = (idx == target_idx) and raw_waving
+                    box_color = COLOR_EMERALD if is_selected_waving else COLOR_AMBER
+                    label_prefix = "Target (Waving)" if is_selected_waving else "Person"
+                    self._draw_detection_box(annotated_img, det['box'], det['score'], color=box_color, label_prefix=label_prefix)
+                    self._draw_skeleton(annotated_img, det['kpts'], det['kpts_conf'])
         else:
             self.gesture_buffer.append(False)
             self.gesture_active = False
@@ -553,22 +609,38 @@ class YoloV11PoseDetectorNode(Node):
                         f"Hand-wave gesture detected, but ignored because robot is busy in state: general_status='{self.general_status}', nav_status='{self.navigation_status}'."
                     )
 
-        # 4. Performance FPS & HUD Render
+        # 4. Performance FPS & HUD Render (skip HUD & publish if nobody subscribes)
         inf_time_ms = (time.time() - start_time) * 1000.0
         self._update_fps(start_time)
-        self._draw_hud(annotated_img, inf_time_ms, num_persons)
-
-        # 5. Publish Output Image
-        try:
-            pub_msg = self.bridge.cv2_to_imgmsg(annotated_img, encoding='bgr8')
-            pub_msg.header = msg.header
-            self.publisher.publish(pub_msg)
-        except Exception as e:
-            self.get_logger().error(f"Debug image publishing failed: {e}")
+        if has_debug_subs:
+            self._draw_hud(annotated_img, inf_time_ms, num_persons)
+            try:
+                pub_msg = self.bridge.cv2_to_imgmsg(annotated_img, encoding='bgr8')
+                pub_msg.header = msg.header
+                self.publisher.publish(pub_msg)
+            except Exception as e:
+                self.get_logger().error(f"Debug image publishing failed: {e}")
 
     # ==========================================================================
     # Inference Helpers
     # ==========================================================================
+    def _run_ncnn_inference(self, cv_img, orig_w, orig_h):
+        """Runs ARM NEON-accelerated NCNN model inference."""
+        mat_in = ncnn.Mat.from_pixels_resize(
+            cv_img,
+            ncnn.Mat.PixelType.PIXEL_BGR2RGB,
+            orig_w,
+            orig_h,
+            self.onnx_input_size,
+            self.onnx_input_size,
+        )
+        mat_in.substract_mean_normalize([], [1.0 / 255.0, 1.0 / 255.0, 1.0 / 255.0])
+        ex = self.ncnn_net.create_extractor()
+        ex.input('in0', mat_in)
+        _, mat_out = ex.extract('out0')
+        predictions = np.array(mat_out).T
+        return self._postprocess_yolo_pose(predictions, orig_w, orig_h)
+
     def _run_onnx_inference(self, cv_img, orig_w, orig_h):
         """Runs ONNX model inference and converts predictions to a list of detections."""
         img_resized = cv2.resize(cv_img, (self.onnx_input_size, self.onnx_input_size))
@@ -578,7 +650,10 @@ class YoloV11PoseDetectorNode(Node):
 
         outputs = self.session.run(None, {self.input_name: img_norm})
         predictions = outputs[0][0].T
+        return self._postprocess_yolo_pose(predictions, orig_w, orig_h)
 
+    def _postprocess_yolo_pose(self, predictions, orig_w, orig_h):
+        """Shared YOLO11-pose NMS and keypoint scaling for both NCNN and ONNX."""
         mask = predictions[:, 4] > self.conf_threshold
         predictions = predictions[mask]
 
@@ -1052,7 +1127,12 @@ class YoloV11PoseDetectorNode(Node):
         cv2.putText(img, "YOLOv11 SENSOR FUSION", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLOR_EMERALD, 1, cv2.LINE_AA)
         cv2.line(img, (20, 38), (10 + hud_w - 10, 38), COLOR_EMERALD, 1)
 
-        backend_name = "ONNX Runtime (CPU-4T)" if self.use_onnx else "PyTorch (CPU)"
+        if self.use_ncnn:
+            backend_name = f"NCNN (FP16-{self.onnx_threads}T)"
+        elif self.use_onnx:
+            backend_name = f"ONNX (CPU-{self.onnx_threads}T)"
+        else:
+            backend_name = "PyTorch (CPU)"
         cv2.putText(img, f"Engine: {backend_name}", (20, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.4, COLOR_WHITE, 1, cv2.LINE_AA)
         cv2.putText(img, f"FPS: {self.fps:.1f}", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.4, COLOR_WHITE, 1, cv2.LINE_AA)
         cv2.putText(img, f"Latency: {inf_time_ms:.1f} ms", (20, 86), cv2.FONT_HERSHEY_SIMPLEX, 0.4, COLOR_WHITE, 1, cv2.LINE_AA)

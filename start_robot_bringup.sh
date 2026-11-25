@@ -16,6 +16,14 @@ export ROS_DOMAIN_ID=0
 unset ROS_LOCALHOST_ONLY
 unset ROS_STATIC_PEERS
 
+# Prevent OpenMP/OpenBLAS/OpenCV thread contention on 6-core ARM A311D
+export OMP_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export VECLIB_MAXIMUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+export OPENCV_FFMPEG_THREADS=1
+
 # ------------------------------------------------------------------------------
 # 1. Dynamic Device Path Discovery
 # Auto-detects ESP32, LiDAR, and Camera even when swapping hardware (different serial IDs)

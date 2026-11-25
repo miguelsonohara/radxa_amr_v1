@@ -45,7 +45,12 @@ except Exception as e:
 try:
     import rclpy
     from rclpy.node import Node
+    from rclpy.action import ActionClient
+    from rclpy.duration import Duration
     from geometry_msgs.msg import PoseStamped
+    from sensor_msgs.msg import BatteryState
+    from nav2_msgs.action import DockRobot, UndockRobot
+    from tf2_ros import Buffer, TransformListener, TransformException
     HAS_RCLPY = True
 except ImportError:
     HAS_RCLPY = False
@@ -55,6 +60,7 @@ WS_DIR = Path(__file__).resolve().parent.parent
 MAPS_DIR = Path("/home/rctrobot/robot_data/maps")
 PARAMS_FILE = WS_DIR / "src" / "receptionist_robot_bringup" / "config" / "slam_toolbox_params.yaml"
 HOME_POSE_FILE = Path("/home/rctrobot/robot_data/home_pose.json")
+DOCK_POSE_FILE = Path("/home/rctrobot/robot_data/dock_pose.json")
 ANCHORS_FILE = Path("/home/rctrobot/robot_data/anchors.json")
 LAST_SAVED_MAP_FILE = Path("/home/rctrobot/robot_data/last_saved_map.txt")
 SERVICE_NAME = "robot_bringup.service"
@@ -123,6 +129,31 @@ def save_stored_home_pose(pose: List[float]):
         print(f"[robot_agent] Saved home pose: {clean_pose}")
     except Exception as e:
         print(f"[robot_agent] Error saving home pose: {e}")
+
+
+def get_stored_dock_pose() -> Optional[List[float]]:
+    """Retrieves recorded dock pose [x, y, yaw] in map frame, or None if not set."""
+    if DOCK_POSE_FILE.exists():
+        try:
+            with open(DOCK_POSE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list) and len(data) >= 3:
+                    return [round(float(data[0]), 4), round(float(data[1]), 4), round(float(data[2]), 4)]
+        except Exception as e:
+            print(f"[robot_agent] Error reading dock pose: {e}")
+    return None
+
+
+def save_stored_dock_pose(pose: List[float]):
+    """Persists recorded dock pose [x, y, yaw] to disk."""
+    try:
+        DOCK_POSE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        clean_pose = [round(float(pose[0]), 4), round(float(pose[1]), 4), round(float(pose[2]), 4)]
+        with open(DOCK_POSE_FILE, "w", encoding="utf-8") as f:
+            json.dump(clean_pose, f, indent=2)
+        print(f"[robot_agent] Saved dock pose: {clean_pose}")
+    except Exception as e:
+        print(f"[robot_agent] Error saving dock pose: {e}")
 
 
 def get_last_saved_map() -> str:
@@ -287,6 +318,13 @@ class RobotAgentROSNode:
     def __init__(self):
         self.node = None
         self.goal_pub = None
+        self.tf_buffer = None
+        self.tf_listener = None
+        self.battery_sub = None
+        self.dock_client = None
+        self.undock_client = None
+        self.battery_lock = threading.Lock()
+        self.latest_battery: Optional[Dict[str, Any]] = None
         self.spin_thread = None
 
         if HAS_RCLPY:
@@ -295,11 +333,87 @@ class RobotAgentROSNode:
                     rclpy.init()
                 self.node = Node("robot_agent_core")
                 self.goal_pub = self.node.create_publisher(PoseStamped, "/goal_pose", 10)
+                self.tf_buffer = Buffer()
+                self.tf_listener = TransformListener(self.tf_buffer, self.node)
+                self.battery_sub = self.node.create_subscription(
+                    BatteryState, "/battery_state", self._battery_cb, 10
+                )
+                self.dock_client = ActionClient(self.node, DockRobot, "/dock_robot")
+                self.undock_client = ActionClient(self.node, UndockRobot, "/undock_robot")
                 self.spin_thread = threading.Thread(target=self._spin, daemon=True)
                 self.spin_thread.start()
                 print("[robot_agent] ROS 2 core node initialized successfully")
             except Exception as e:
                 print(f"[robot_agent] Warning: Failed to init rclpy: {e}")
+
+    def _battery_cb(self, msg):
+        with self.battery_lock:
+            self.latest_battery = {
+                "voltage": round(float(msg.voltage), 2),
+                "current": round(float(msg.current), 2),
+                "percentage": round(float(msg.percentage), 3),
+                "power_supply_status": int(msg.power_supply_status),
+                "is_charging": int(msg.power_supply_status) == 1 or float(msg.current) > 0.5,
+                "timestamp": time.time(),
+            }
+
+    def get_battery_status(self) -> Dict[str, Any]:
+        with self.battery_lock:
+            if self.latest_battery is None:
+                return {"available": False, "message": "Chưa nhận được dữ liệu từ /battery_state"}
+            return {"available": True, **self.latest_battery}
+
+    def get_current_map_pose(self) -> Optional[List[float]]:
+        """Reads current robot pose [x, y, yaw] in map frame via TF2."""
+        if not (self.node and self.tf_buffer):
+            return None
+        try:
+            tf = self.tf_buffer.lookup_transform(
+                "map", "base_link", rclpy.time.Time(), timeout=Duration(seconds=0.5)
+            )
+            x = tf.transform.translation.x
+            y = tf.transform.translation.y
+            q = tf.transform.rotation
+            yaw = math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
+            return [round(x, 4), round(y, 4), round(yaw, 4)]
+        except TransformException as e:
+            print(f"[robot_agent] TF lookup map->base_link failed: {e}")
+            return None
+
+    def send_dock_goal(self, x: float, y: float, yaw: float) -> Tuple[bool, str]:
+        """Sends DockRobot action goal using dynamic dock_pose (use_dock_id=False)."""
+        if not (self.node and self.dock_client):
+            return False, "ROS 2 DockRobot ActionClient chưa sẵn sàng"
+        if not self.dock_client.wait_for_server(timeout_sec=2.0):
+            return False, "/dock_robot action server chưa hoạt động (kiểm tra docking_server)"
+
+        goal = DockRobot.Goal()
+        goal.use_dock_id = False
+        goal.dock_type = "simple_charging_dock"
+        goal.navigate_to_staging_pose = True
+        goal.dock_pose.header.stamp = self.node.get_clock().now().to_msg()
+        goal.dock_pose.header.frame_id = "map"
+        goal.dock_pose.pose.position.x = float(x)
+        goal.dock_pose.pose.position.y = float(y)
+        goal.dock_pose.pose.position.z = 0.0
+        goal.dock_pose.pose.orientation.z = math.sin(yaw * 0.5)
+        goal.dock_pose.pose.orientation.w = math.cos(yaw * 0.5)
+
+        self.dock_client.send_goal_async(goal)
+        return True, f"Đã gửi lệnh DockRobot tới [{x:.3f}, {y:.3f}, {yaw:.3f}]"
+
+    def send_undock_goal(self) -> Tuple[bool, str]:
+        """Sends UndockRobot action goal."""
+        if not (self.node and self.undock_client):
+            return False, "ROS 2 UndockRobot ActionClient chưa sẵn sàng"
+        if not self.undock_client.wait_for_server(timeout_sec=2.0):
+            return False, "/undock_robot action server chưa hoạt động"
+
+        goal = UndockRobot.Goal()
+        goal.dock_type = "simple_charging_dock"
+        goal.max_undocking_time = 30.0
+        self.undock_client.send_goal_async(goal)
+        return True, "Đã gửi lệnh UndockRobot lùi ra khỏi trạm sạc"
 
     def _spin(self):
         try:
@@ -388,9 +502,16 @@ class RobotAgentHTTPHandler(http.server.BaseHTTPRequestHandler):
             home_pose = get_stored_home_pose()
             bringup_active = is_service_active(SERVICE_NAME)
 
-            # Check if SLAM or Nav2 nodes are visible
-            ok_nodes, out_nodes, _ = run_cmd("ros2 node list 2>/dev/null", timeout=3)
-            slam_active = ok_nodes and ("slam_toolbox" in out_nodes or "async_slam_toolbox_node" in out_nodes)
+            # Check if SLAM or Nav2 nodes are visible (in-memory via rclpy, no CLI subprocess)
+            if ros_core and ros_core.node:
+                try:
+                    node_names = ros_core.node.get_node_names()
+                    slam_active = any("slam_toolbox" in n for n in node_names)
+                except Exception:
+                    slam_active = bringup_active
+            else:
+                ok_nodes, out_nodes, _ = run_cmd("ros2 node list 2>/dev/null", timeout=3)
+                slam_active = ok_nodes and ("slam_toolbox" in out_nodes or "async_slam_toolbox_node" in out_nodes)
 
             self._send_json({
                 "mode": mode,
@@ -446,6 +567,23 @@ class RobotAgentHTTPHandler(http.server.BaseHTTPRequestHandler):
         elif path == "/api/robot/anchors":
             anchors = get_stored_anchors()
             self._send_json({"success": True, "anchors": anchors})
+
+        # ----------------------------------------------------------------------
+        # f) GET /api/robot/dock-pose & GET /api/robot/battery
+        # ----------------------------------------------------------------------
+        elif path == "/api/robot/dock-pose":
+            dock_pose = get_stored_dock_pose()
+            self._send_json({
+                "success": True,
+                "configured": dock_pose is not None,
+                "dock_pose": dock_pose,
+            })
+
+        elif path == "/api/robot/battery":
+            if ros_core:
+                self._send_json({"success": True, **ros_core.get_battery_status()})
+            else:
+                self._send_json({"success": False, "available": False, "message": "ROS node chưa khởi tạo"}, 500)
 
         else:
             self._send_json({"success": False, "message": f"Endpoint '{path}' not found"}, 404)
@@ -634,6 +772,43 @@ class RobotAgentHTTPHandler(http.server.BaseHTTPRequestHandler):
                     }, 500)
             else:
                 self._send_json({"success": False, "message": f"Hành động không hợp lệ: {action}"}, 400)
+
+        # ----------------------------------------------------------------------
+        # 4b. POST /api/robot/dock-pose, /api/robot/dock, /api/robot/undock
+        # ----------------------------------------------------------------------
+        elif path == "/api/robot/dock-pose":
+            pose = data.get("dock_pose") or data.get("pose")
+            if isinstance(pose, list) and len(pose) >= 3:
+                saved = [float(pose[0]), float(pose[1]), float(pose[2])]
+            else:
+                saved = ros_core.get_current_map_pose() if ros_core else None
+                if saved is None:
+                    self._send_json({
+                        "success": False,
+                        "message": "Không đọc được TF map -> base_link để lưu tọa độ dock!",
+                    }, 500)
+                    return
+            save_stored_dock_pose(saved)
+            self._send_json({
+                "success": True,
+                "dock_pose": get_stored_dock_pose(),
+                "message": f"Đã lưu tọa độ trạm sạc: {saved}",
+            })
+
+        elif path == "/api/robot/dock":
+            dock_pose = get_stored_dock_pose()
+            if not dock_pose:
+                self._send_json({
+                    "success": False,
+                    "message": "Chưa lưu tọa độ trạm sạc! Hãy lái xe vào dock và gọi POST /api/robot/dock-pose trước.",
+                }, 400)
+                return
+            ok, msg = ros_core.send_dock_goal(dock_pose[0], dock_pose[1], dock_pose[2]) if ros_core else (False, "ROS chưa sẵn sàng")
+            self._send_json({"success": ok, "dock_pose": dock_pose, "message": msg}, 200 if ok else 500)
+
+        elif path == "/api/robot/undock":
+            ok, msg = ros_core.send_undock_goal() if ros_core else (False, "ROS chưa sẵn sàng")
+            self._send_json({"success": ok, "message": msg}, 200 if ok else 500)
 
         # ----------------------------------------------------------------------
         # 5. POST /api/robot/bringup (Service start/stop/restart)
